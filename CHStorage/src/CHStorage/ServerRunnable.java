@@ -59,13 +59,11 @@ public class ServerRunnable implements Runnable {
 			}
 			broadcast ( "Got connection from: " + clientSocket.getInetAddress().toString() );
 
-			freeslot = cleanthreads();
-			while ( freeslot < 0 ){
+			while ( (freeslot = cleanthreads()) < 0 ){
 				broadcast("No room for new connection...");
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e1) {}
-				freeslot = cleanthreads();
 				
 				//TODO: Do something if stuck here for too long?
 				//		Also inform this new client that we can't help them?

@@ -43,14 +43,19 @@ public class ListenRunnable implements Runnable {
 			String message = sh.ReceiveMessage( timeout );
 			
 			if (message == null) {
-				this.seppuku();
-				continue;
+				this.seppuku("Null or timeout");
+				return;
 			}
 			broadcast( "Got: " + message );
 			
 			try {
 
 				JSONObject j = new JSONObject(message);
+				
+				if (j.has("stop")){
+					this.seppuku("Stop");
+					return;
+				}
 				
 				JSONObject response = NM.keycommand( j );
 				
@@ -59,7 +64,12 @@ public class ListenRunnable implements Runnable {
 				continue;
 				
 			} catch (JSONException e) {
+				
 				//TODO: Parse non-JSON form of commands, give reply
+				
+				//for now, tell the user its an invalid command
+				JSONObject response = NM.keycommand( null );
+				sh.SendMessage( response.toString() );
 				
 				broadcast("Not JSON... I'll pretend I didn't hear that.");
 			}
@@ -71,8 +81,8 @@ public class ListenRunnable implements Runnable {
 	/**
 	 *  hnnnnnnnng
 	 */
-	private void seppuku(){
-		broadcast("Null message or timeout, closing: " + theirip);
+	private void seppuku( String m ){
+		broadcast( m + ", closing: " + theirip);
 		sh.CloseConnection();
 		//TODO: more research on thread killing?
 		running = false;
