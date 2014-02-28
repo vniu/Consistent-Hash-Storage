@@ -13,10 +13,10 @@ import org.json.JSONObject;
  * 		Responsible for initializing threads, and doing file IO.
  */
 public class Initiator {
-	private final static int port = 2323; 			//TODO: Change from hardcoded?
-	private final static int maxconnections = 30;	// Limit to 5 clients at a time.
-	private final static int fileIOtime = 5; 		// Write file to disk every 10 seconds.
-	private final static int listentimeout = 30; 	// Allow a client connection to remain open for 30 seconds from last message.\
+	private final static int port = 2323; 			//TODO: Change these from hardcoded?
+	private final static int maxconnections = 30;	// Limit to n clients at a time.
+	private final static int fileIOtime = 5; 		// Write file to disk every n seconds.
+	private final static int listentimeout = 30; 	// Allow a client connection to remain open for n seconds from last message.\
 	private final static String serverfilename = "servers.txt";
 	private final static String outputfilename = "kv.txt";
 
