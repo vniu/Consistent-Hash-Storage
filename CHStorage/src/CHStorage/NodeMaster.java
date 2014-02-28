@@ -17,8 +17,6 @@ public class NodeMaster {
 	private int port;
 
 	/*
-	 * TODO:	Lots of work still left to be done...
-	 * TODO:	Alternative way to request key / value
 	 * TODO: 	Limit storage space allowed to 64MB
 	 * TODO:	Failure handling: backup data on other nodes, redirect to new node on failure, manage backup values
 	 */
@@ -215,14 +213,20 @@ public class NodeMaster {
 			return response;
 		}
 
-		sh.CreateConnection( url, port );
+		if ( sh.CreateConnection( url, port ) != 0 ) {
+			try {broadcast( "Response from external server failure (connection creation): " + url );
+				response.put("ErrorCode", 3); // TODO: node fail to connect
+				return response;
+			} catch (JSONException e1) {}
+		}
+		
 		sh.SendMessage( j.toString() );
 		String recmessage = sh.ReceiveMessage(10); // Give the server 10 seconds? TODO: Maybe not hardcoded?
 
 		if( recmessage == null ){
 			try {
 				broadcast( "Response from external server failure (null): " + url );
-				response.put("ErrorCode", 3); // overloaded?
+				response.put("ErrorCode", 3); // overloaded?	// TODO: node fail to connect
 				return response;
 			} catch (JSONException e1) {}
 		}
@@ -232,7 +236,7 @@ public class NodeMaster {
 		} catch (JSONException e) {
 			try {
 				broadcast( "Response from external server, internal failure: " + url );
-				response.put("ErrorCode", 4); // BAD or malformed response from server: shouldn't get here.
+				response.put("ErrorCode", 4); // BAD or malformed response from server: shouldn't get here. // TODO: node fail to connect
 			} catch (JSONException e1) {}
 		}
 		

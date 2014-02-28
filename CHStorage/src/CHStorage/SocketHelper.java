@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -18,13 +19,13 @@ public class SocketHelper {
 	private Socket TCP_socket;
 	private OutputStream TCP_socket_os;
 	private InputStream TCP_socket_is;
-	
+
 	/**
 	 * 		Default construction...
 	 */
 	public SocketHelper(){
 	}
-	
+
 	/**
 	 * 		In this case we're probably a sever.
 	 * 		Connect the socket to our object.
@@ -42,13 +43,13 @@ public class SocketHelper {
 			e.printStackTrace();	// invalid socket, shouldn't get here.
 		}
 	}
-	
+
 	/**
 	 * Opens a socket connection to the given server and port.
 	 * 
 	 * @param server 	The server to connect to.
 	 * @param port 		The port to connect on.
-	 * @return 			True if successful
+	 * @return 			0 if successful, 1 if connection was REFUSED, 2 if there was an unknown host or io exception.
 	 */
 	public int CreateConnection( String server, int port ){
 		try{
@@ -67,7 +68,7 @@ public class SocketHelper {
 		}
 		return 0;
 	}
-	
+
 	/**
 	 * Closes this instance of the class's socket.
 	 */
@@ -83,7 +84,7 @@ public class SocketHelper {
 			//e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * 		Converts a byte array into a hex string.
 	 * 
@@ -104,7 +105,7 @@ public class SocketHelper {
 		}
 		return buf.toString().toUpperCase();
 	}
-	
+
 	/**
 	 * 		Attempts to receive a message over the socket connection.
 	 * 		Will wait for t seconds, and return null if it times out.
@@ -112,9 +113,14 @@ public class SocketHelper {
 	 * @return 		The message, or null if we couldn't get a message, or end of stream was reached.
 	 */
 	public String ReceiveMessage( int t ){
-		StringBuilder sb = new StringBuilder();
-		BufferedReader br = new BufferedReader( new InputStreamReader(TCP_socket_is) );
-		
+		String s;
+		BufferedReader br = null;
+		try {
+			br = new BufferedReader( new InputStreamReader(TCP_socket_is , "ISO-8859-1") ); // 1-1 byte mapping?
+		} catch (UnsupportedEncodingException e1) {
+			e1.printStackTrace(); //hardcoded encoding, won't get here
+		}
+
 		try {
 			int readattempts = 0;
 			while( !br.ready() ){ // Check if we actually have stuff to read
@@ -123,17 +129,15 @@ public class SocketHelper {
 				if (readattempts > t*10 )
 					return null;
 			}
-			
-			sb.append( br.readLine() ); // Receive the full line of data
-		
+			s = new String(br.readLine().getBytes("ISO-8859-1"), "ISO-8859-1");
 		} catch (IOException e) {
 			return null;
 		} catch (InterruptedException e) {
 			return null;
 		}
-		return sb.toString();
+		return s;
 	}
-	
+
 	/**
 	 * 		Uses a PrintWriter to push out a string over the socket.
 	 * 	
@@ -143,6 +147,17 @@ public class SocketHelper {
 		PrintWriter pw = new PrintWriter(TCP_socket_os);
 		pw.println(m);
 		pw.flush();
+	}
+
+	/**
+	 * 		Send a byte array over the socket.
+	 * 	
+	 * @param bytes		The byte array to send.
+	 */
+	public void SendBytes ( byte[] bytes ){
+		try {
+			SendMessage ( new String(bytes, "ISO-8859-1") ); // this should work...
+		} catch (UnsupportedEncodingException e) {}
 	}
 
 }

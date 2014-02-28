@@ -14,9 +14,9 @@ import org.json.JSONObject;
  */
 public class Initiator {
 	private final static int port = 2323; 			//TODO: Change from hardcoded?
-	private final static int maxconnections = 5;	// Limit to 5 clients at a time.
-	private final static int fileIOtime = 10; 		// Write file to disk every 10 seconds.
-	private final static int listentimeout = 30; 	// Allow a connection to remain open for 30 seconds from last message.\
+	private final static int maxconnections = 30;	// Limit to 5 clients at a time.
+	private final static int fileIOtime = 5; 		// Write file to disk every 10 seconds.
+	private final static int listentimeout = 30; 	// Allow a client connection to remain open for 30 seconds from last message.\
 	private final static String serverfilename = "servers.txt";
 	private final static String outputfilename = "kv.txt";
 
@@ -27,8 +27,8 @@ public class Initiator {
 	 * <br>	Example usage with nc and JSON strings:
 	 * <br>		$ nc localhost {@value #port}
 	 * <br>		$ { "put":true, "key":"cats", value:"meow"}
-	 * <br>		$ { "get":"true", "key":"cats"}
-	 * <br>		$ { "remove":"true", "key":"cats"}
+	 * <br>		$ { "get":true, "key":"cats"}
+	 * <br>		$ { "remove":true, "key":"cats"}
 	 * <br> 
 	 * 		Note that you can use plain strings in JSON format.
 	 * 
