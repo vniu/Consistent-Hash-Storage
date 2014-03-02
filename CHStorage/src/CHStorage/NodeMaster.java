@@ -15,6 +15,7 @@ public class NodeMaster {
 	private JSONArray servers; 
 	private JSONObject storage;
 	private int port;
+	private int redundancylevel;
 
 	/*
 	 * TODO: 	Limit storage space allowed to 64MB
@@ -25,12 +26,15 @@ public class NodeMaster {
 	 * 		Constructor - a new NodeMaster object based on the server text file.
 	 * 
 	 * @param serverlist		The list of servers that will be running the program.
+	 * @param serverport		The port to listen on.
+	 * @param _redundancylevel	The amount of other servers to backup the data on.
 	 * @throws JSONException	if something was wrong with the server list format.
 	 */
-	public NodeMaster( JSONObject serverlist, int serverport ) throws JSONException {
+	public NodeMaster( JSONObject serverlist, int serverport, int _redundancylevel ) throws JSONException {
 		servers = serverlist.getJSONArray("servers");
 		storage = new JSONObject();
 		this.port = serverport;
+		this.redundancylevel = _redundancylevel;
 	}
 
 	private static void broadcast ( String m ) {
@@ -55,13 +59,9 @@ public class NodeMaster {
 	 */
 	public JSONObject keycommand ( JSONObject j ){
 		Boolean isinternal = false;
-		JSONObject response = null;
 
 		if ( j == null ){
-			try {
-				response = new JSONObject().put("ErrorCode", 5);
-			} catch (JSONException e1) {}
-			return response;
+			return craftResponse(5);
 		}
 		
 		try{
@@ -85,10 +85,7 @@ public class NodeMaster {
 		}
 
 		broadcast( "No command in the object?");
-		try {
-			response = new JSONObject().put("ErrorCode", 5);
-		} catch (JSONException e1) {}
-		return response;
+		return craftResponse(5);
 	}
 
 	/**
@@ -98,20 +95,16 @@ public class NodeMaster {
 	 * @return		JSONObject with the status: ErrorCode 4 if the put failed, 0 if successful.
 	 */
 	public synchronized JSONObject putKV( JSONObject j ) {
-		JSONObject response = new JSONObject();
 
 		try {
 			this.storage.put( j.getString( "key" ), j.getString( "value" ) );
-			response.put("ErrorCode", 0);
 			broadcast("Put key: " + j.getString( "key" ) );
+			return craftResponse(0);
+			
 		} catch (JSONException e) {
-			try {
-				broadcast( "invalid put?" );
-				response.put("ErrorCode", 4);
-			} catch (JSONException e1) {}
+			broadcast( "Invalid put?" );
+			return craftResponse(4); 
 		}
-
-		return response;
 	}
 
 	/**
@@ -122,22 +115,18 @@ public class NodeMaster {
 	 * 				Will also contain the value in the object if it was successful.
 	 */
 	public synchronized JSONObject getKV( JSONObject j ) {
-		String value = null;
-		JSONObject response = new JSONObject();
 
 		try {
-			value = this.storage.getString( j.getString( "key" ) );
-			response.put("ErrorCode", 0);
+			String value = this.storage.getString( j.getString( "key" ) );
+			JSONObject response = craftResponse(0);
 			response.put("value", value);
 			broadcast("Retrieved key: " + j.getString( "key" ) );
+			return response;
+			
 		} catch (JSONException e) {
-			try {
-				broadcast( "invalid get: not existant?" );
-				response.put("ErrorCode", 1);
-			} catch (JSONException e1) {}
+			broadcast( "Invalid get: not existant?" );
+			return craftResponse(1);
 		}
-
-		return response;
 	}
 
 	/**
@@ -147,21 +136,17 @@ public class NodeMaster {
 	 * @return		JSONObject with the status: ErrorCode 1 if the key was not found, 0 if successful.
 	 */
 	public synchronized JSONObject removeKV( JSONObject j ) {
-		JSONObject response = new JSONObject();
 
 		try {
 			String s = (String)this.storage.remove( j.getString( "key" ) );
 			if ( s == null ) throw new JSONException("null");
-			response.put("ErrorCode", 0);
 			broadcast("Removed key: " + j.getString( "key" ) );
-		} catch (JSONException e) {
-			try {
-				broadcast( "invalid remove: not existant?" );
-				response.put("ErrorCode", 1);
-			} catch (JSONException e1) {}
-		}
+			return craftResponse(0);
 
-		return response;
+		} catch (JSONException e) {
+			broadcast( "Invalid remove: not existant?" );
+			return craftResponse(1);
+		}
 	}
 
 	/**
@@ -198,51 +183,94 @@ public class NodeMaster {
 	 * @return		The result received by the server.
 	 */
 	public JSONObject sendmessageremote( JSONObject j ){
-		SocketHelper sh = new SocketHelper();
 		String url = null;
 		JSONObject response = new JSONObject();
+		int location = 0;
 
 		try {
-			int location = mapto ( j.getString("key") );
+			location = mapto ( j.getString("key") );
 			url = this.servers.getString(location);
 			j.put("internal", true);
 		} catch (JSONException e) {
-			try { // Couldn't map to a location, most likely malformed input.
-				response = new JSONObject().put("ErrorCode", 5);
-			} catch (JSONException e1) {}
-			return response;
+			broadcast("Couldn't map to a location?");
+			return craftResponse(5);
 		}
-
-		if ( sh.CreateConnection( url, port ) != 0 ) {
-			try {broadcast( "Response from external server failure (connection creation): " + url );
-				response.put("ErrorCode", 3); // TODO: node fail to connect
-				return response;
-			} catch (JSONException e1) {}
+		
+		response = sendMessageTo ( j, url );
+		
+		/*
+		 * TODO: Implement redundancy
+		 * 
+		for ( int i = 0; i < redundancylevel; i++){
+			location++;
+			if ( location == servers.length() ) 
+				location = 0;
+			String redundanturl;
+			try {
+				redundanturl = this.servers.getString(location);
+				sendMessageTo ( j, redundanturl );
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		*/
+		
+		return response;
+	}
+	
+	/**
+	 * 		A helper function to send a message j to a url, and return their response.
+	 * 
+	 * @param j		The message to send
+	 * @param url	The location to send to
+	 * @return		The response received, or an error coded response based off of the result.
+	 */
+	JSONObject sendMessageTo ( JSONObject j, String url ){
+		SocketHelper sh = new SocketHelper();
+		
+		if ( sh.CreateConnection( url, this.port ) != 0 ) {
+			broadcast( "Response from external server failure (connection creation): " + url );
+			return craftResponse(3);	// TODO: node fail to connect
 		}
 		
 		sh.SendMessage( j.toString() );
 		String recmessage = sh.ReceiveMessage(10); // Give the server 10 seconds? TODO: Maybe not hardcoded?
 
 		if( recmessage == null ){
-			try {
-				broadcast( "Response from external server failure (null): " + url );
-				response.put("ErrorCode", 3); // overloaded?	// TODO: node fail to connect
-				return response;
-			} catch (JSONException e1) {}
+			broadcast( "Response from external server failure (null): " + url );
+			sh.CloseConnection();
+			return craftResponse(3); // overloaded?	// TODO: node fail to connect
 		}
 
 		try {
-			response = new JSONObject(recmessage);
+			JSONObject response = new JSONObject(recmessage);
+			sh.SendMessage("{\"stop\":\"true\"}"); // Tell them not to keep the connection open - it was an internal send, not a client
+			sh.CloseConnection();
+			return response;
+			
+		} catch (JSONException e) {
+			broadcast( "Response from external server, internal failure?: " + url );
+			sh.CloseConnection();
+			return craftResponse(4); // BAD or malformed response from server: shouldn't get here. // TODO: node fail to connect?
+		}
+	}
+	
+	/**
+	 * 		A helper function to quickly make a response with an error code.
+	 * 
+	 * @param ErrorCode	The (int) error code to be placed under the key "ErrorCode"
+	 * @return			The newly formed object
+	 */
+	JSONObject craftResponse ( int ErrorCode ){
+		JSONObject response = new JSONObject();
+		try {
+			response.put("ErrorCode", ErrorCode);
 		} catch (JSONException e) {
 			try {
-				broadcast( "Response from external server, internal failure: " + url );
-				response.put("ErrorCode", 4); // BAD or malformed response from server: shouldn't get here. // TODO: node fail to connect
+				response.put("ErrorCode", 20); // Some sort of internal failure?
 			} catch (JSONException e1) {}
 		}
-		
-		sh.SendMessage("{\"stop\":\"true\"}"); //derp?
-		sh.CloseConnection();
-
 		return response;
 	}
 

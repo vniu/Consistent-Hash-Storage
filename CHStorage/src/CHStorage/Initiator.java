@@ -13,10 +13,11 @@ import org.json.JSONObject;
  * 		Responsible for initializing threads, and doing file IO.
  */
 public class Initiator {
-	private final static int port = 2323; 			//TODO: Change from hardcoded?
-	private final static int maxconnections = 30;	// Limit to 5 clients at a time.
-	private final static int fileIOtime = 5; 		// Write file to disk every 10 seconds.
-	private final static int listentimeout = 30; 	// Allow a client connection to remain open for 30 seconds from last message.\
+	private final static int port = 2324; 			//TODO: Change from hardcoded?
+	private final static int maxconnections = 30;	// Limit to n clients at a time.
+	private final static int fileIOtime = 5; 		// Write file to disk every n seconds.
+	private final static int listentimeout = 30; 	// Allow a client connection to remain open for n seconds from last message.
+	private final static int redundancylevel = 3;	// Store data on n other servers.
 	private final static String serverfilename = "servers.txt";
 	private final static String outputfilename = "kv.txt";
 
@@ -53,7 +54,7 @@ public class Initiator {
 			JSONObject j = new JSONObject(sb.toString());
 			System.out.println("Main> Server List: " + j.toString());
 
-			NodeMaster NM = new NodeMaster( j, port );
+			NodeMaster NM = new NodeMaster( j, port, redundancylevel );
 			Thread th = new Thread( new ServerRunnable( port, maxconnections, listentimeout, NM ) );
 			th.start();
 
