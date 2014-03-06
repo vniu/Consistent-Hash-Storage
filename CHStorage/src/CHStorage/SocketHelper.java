@@ -1,5 +1,6 @@
 package CHStorage;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +38,7 @@ public class SocketHelper {
 			this.TCP_socket = TCP_socket;
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
-			this.TCP_socket.setSoTimeout(7000);
+			this.TCP_socket.setSoTimeout(10000); //TODO: hardcoded 10 seconds...
 
 		} catch (IOException e) {
 			e.printStackTrace();	// invalid socket, shouldn't get here.
@@ -45,7 +46,7 @@ public class SocketHelper {
 	}
 
 	/**
-	 * Opens a socket connection to the given server and port.
+	 * 		Opens a socket connection to the given server and port.
 	 * 
 	 * @param server 	The server to connect to.
 	 * @param port 		The port to connect on.
@@ -70,7 +71,7 @@ public class SocketHelper {
 	}
 
 	/**
-	 * Closes this instance of the class's socket.
+	 * 		Closes this instance of the class's socket.
 	 */
 	public void CloseConnection() {
 		try {
@@ -106,23 +107,19 @@ public class SocketHelper {
 		return buf.toString().toUpperCase();
 	}
 
-	/**
+	/**		DEPRECIATED unfortunately
 	 * 		Attempts to receive a message over the socket connection.
 	 * 		Will wait for t seconds, and return null if it times out.
 	 * @param t		How long to wait, in seconds
 	 * @return 		The message, or null if we couldn't get a message, or end of stream was reached.
 	 */
-	public String ReceiveMessage( int t ){
+	public String __depreciated__ReceiveMessage( int t ){
 		String s;
 		BufferedReader br = null;
-		//StringBuilder sb = new StringBuilder();
-		try {
-			br = new BufferedReader( new InputStreamReader(TCP_socket_is , "ISO-8859-1") ); // 1-1 byte mapping?
-		} catch (UnsupportedEncodingException e1) {
-			e1.printStackTrace(); //hardcoded encoding, won't get here
-		}
 
 		try {
+			br = new BufferedReader( new InputStreamReader(TCP_socket_is , "ISO-8859-1") ); // 1-1 byte mapping?
+			
 			int readattempts = 0;
 			while( !br.ready() ){ // Check if we actually have stuff to read
 				Thread.sleep(100);
@@ -131,17 +128,64 @@ public class SocketHelper {
 					return null;
 			}
 			s = new String(br.readLine().getBytes("ISO-8859-1"), "ISO-8859-1");
-			//int content;
-			//while ((content = br.read()) != -1){
-			//	sb.append( (char)content ); 
-			//} 
-		} catch (IOException e) {
-			return null;
-		} catch (InterruptedException e) {
+			
+		} catch (IOException | InterruptedException e) {
 			return null;
 		}
+		
 		return s;
-		//return sb.toString();
+	}
+	
+	
+	/**
+	 * 		This is dumb.
+	 * 
+	 * @param t 	
+	 * @return		
+	 */
+	public String ReceiveMessage( int t ){
+		try {
+			BufferedInputStream bis = new BufferedInputStream(this.TCP_socket_is);
+			
+			int readattempts = 0;
+			while ( bis.available() == 0 ){
+				Thread.sleep(100);
+				readattempts++;
+				if (readattempts > t*10 )
+					return null;
+			}
+			bis.mark(1);
+			int byte1 = bis.read();
+			bis.reset();
+
+			if ( byte1 == "{".getBytes()[0] ){
+				// First byte implies JSON formatting. Take all the data, it should be proper.
+				int content;
+				StringBuffer sb = new StringBuffer();
+				while ((content = bis.read()) != '\n'){
+					sb.append( (char)content ); 
+				}
+				return sb.toString();
+			}
+			
+			// oh god here we go
+			byte[] bytes;
+			if (byte1 == (byte)1){
+				bytes = new byte[1057];		// LOL LOOK AT THAT HARDCODED NUMBER!
+				bis.read(bytes, 0, 1057); 
+			}else{
+				bytes = new byte[33]; 		// *vomits*
+				bis.read(bytes, 0, 33); 
+			}
+			String s = new String(bytes, "ISO-8859-1");
+			return s;
+			
+		} catch (IOException | InterruptedException e) { // TODO:: ????
+			// TODO Auto-generated catch block
+			System.out.println( e.getLocalizedMessage() );
+			e.printStackTrace();
+		}
+		return null; // ??
 	}
 
 	/**

@@ -57,7 +57,7 @@ public class NodeMaster {
 	 * 
 	 * @param j		The command to execute.
 	 * @return		The result of the execution, including "ErrorCode". ErrorCode 5 is for a command not found,
-	 * 				see sub-functions for rest of error codes.
+	 * 				see craftResponse for rest of error codes.
 	 */
 	public JSONObject keycommand ( JSONObject j ){
 		Boolean isinternal = false;
@@ -268,6 +268,30 @@ public class NodeMaster {
 		JSONObject response = new JSONObject();
 		try {
 			response.put("ErrorCode", ErrorCode);
+			
+			switch(ErrorCode){
+			case 0:
+				response.put("ErrorInfo", "Success!");
+				break;
+			case 1:
+				response.put("ErrorInfo", "Non-Existant key.");
+				break;
+			case 2:
+				response.put("ErrorInfo", "No space remaining to put.");
+				break;
+			case 3:
+				response.put("ErrorInfo", "System overload.");
+				break;
+			case 4:
+				response.put("ErrorInfo", "Internal Store failure.");
+				break;
+			case 5:
+				response.put("ErrorInfo", "Unrecognized or malformed command.");
+				break;
+			default:
+				response.put("ErrorInfo", "Unknown Error.");
+				break;
+			}
 		} catch (JSONException e) {
 			try {
 				broadcast("INTERNAL CODE FAILURE");

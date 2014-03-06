@@ -33,6 +33,8 @@ public class Initiator {
 	 * <br> 
 	 * 		Note that you can use plain strings in JSON format.
 	 * 
+	 * 		Yes, there is an alternate way to put and get key/values. I dislike it.
+	 * 
 	 * 
 	 * @param args	(Currently unused)
 	 */
@@ -64,7 +66,7 @@ public class Initiator {
 
 				try {
 					BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-							new FileOutputStream( outputfilename ), "utf-8"));
+							new FileOutputStream( outputfilename ), "ISO-8859-1"));
 
 					// Write node's storage data to text file for external viewing
 					writer.write( NM.getStorage().toString() );
