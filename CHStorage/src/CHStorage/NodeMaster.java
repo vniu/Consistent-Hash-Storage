@@ -4,6 +4,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,6 +16,7 @@ public class NodeMaster {
 	private JSONArray servers; 
 	private JSONObject storage;
 	private int port;
+	@SuppressWarnings("unused")
 	private int redundancylevel;
 
 	/*
@@ -245,7 +247,7 @@ public class NodeMaster {
 
 		try {
 			JSONObject response = new JSONObject(recmessage);
-			sh.SendMessage("{\"stop\":\"true\"}"); // Tell them not to keep the connection open - it was an internal send, not a client
+			sh.SendMessage("{\"stop\":true}"); // Tell them not to keep the connection open - it was an internal send, not a client
 			sh.CloseConnection();
 			return response;
 			
@@ -268,6 +270,7 @@ public class NodeMaster {
 			response.put("ErrorCode", ErrorCode);
 		} catch (JSONException e) {
 			try {
+				broadcast("INTERNAL CODE FAILURE");
 				response.put("ErrorCode", 20); // Some sort of internal failure?
 			} catch (JSONException e1) {}
 		}

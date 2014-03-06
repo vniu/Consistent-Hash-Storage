@@ -115,6 +115,7 @@ public class SocketHelper {
 	public String ReceiveMessage( int t ){
 		String s;
 		BufferedReader br = null;
+		//StringBuilder sb = new StringBuilder();
 		try {
 			br = new BufferedReader( new InputStreamReader(TCP_socket_is , "ISO-8859-1") ); // 1-1 byte mapping?
 		} catch (UnsupportedEncodingException e1) {
@@ -130,12 +131,17 @@ public class SocketHelper {
 					return null;
 			}
 			s = new String(br.readLine().getBytes("ISO-8859-1"), "ISO-8859-1");
+			//int content;
+			//while ((content = br.read()) != -1){
+			//	sb.append( (char)content ); 
+			//} 
 		} catch (IOException e) {
 			return null;
 		} catch (InterruptedException e) {
 			return null;
 		}
 		return s;
+		//return sb.toString();
 	}
 
 	/**
