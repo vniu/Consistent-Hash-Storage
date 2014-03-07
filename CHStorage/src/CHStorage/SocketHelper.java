@@ -40,7 +40,7 @@ public class SocketHelper {
 			this.TCP_socket.setSoTimeout(10000); //TODO: hardcoded 10 seconds...
 
 		} catch (IOException e) {
-			e.printStackTrace();	// invalid socket, shouldn't get here.
+			//e.printStackTrace();	// invalid socket, shouldn't get here.
 		}
 	}
 

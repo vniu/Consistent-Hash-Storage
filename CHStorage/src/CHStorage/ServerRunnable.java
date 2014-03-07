@@ -22,6 +22,8 @@ public class ServerRunnable implements Runnable {
 	 * @param port					The port to listen on
 	 * @param totalmaxconnections	How many connections can be allocated at once
 	 * @param nodemaster			The NM to be passed along to clients
+	 * @param listentimeout			The amount of time to wait until we determine a connection is invalid.
+	 * @param _ForceStop			Whether or not to have persistent connections.
 	 */
 	public ServerRunnable( int port, int totalmaxconnections, int listentimeout, NodeMaster nodemaster, Boolean _ForceStop ) {
 		this.serverport = port;
@@ -60,7 +62,8 @@ public class ServerRunnable implements Runnable {
 				continue;
 			}
 			broadcast ( "Got connection from: " + clientSocket.getInetAddress().toString() );
-
+			
+			int timer = 0;
 			while ( (freeslot = cleanthreads()) < 0 ){
 				broadcast("No room for new connection...");
 				try {
@@ -69,12 +72,23 @@ public class ServerRunnable implements Runnable {
 				
 				//TODO: Do something if stuck here for too long?
 				//		Also inform this new client that we can't help them?
+				if ( timer > this.timeout ){
+					broadcast("Server is overloaded.");
+					byte[] bytes = new byte[1];
+					bytes[0] = 3;	//Overloaded
+					SocketHelper sh = new SocketHelper( clientSocket );
+					sh.SendBytes(bytes);
+					sh.CloseConnection();
+					continue;
+				}
+				timer++;
 			}
-
-			Thread client = new Thread( new ListenRunnable( clientSocket, NM, timeout, ForceStop ) );
-			client.start();
-			runningthreads[freeslot] = client;
-
+			
+			if (timer <= this.timeout ){
+				Thread client = new Thread( new ListenRunnable( clientSocket, NM, timeout, ForceStop ) );
+				client.start();
+				runningthreads[freeslot] = client;
+			}
 		} // End of while
 
 		try {

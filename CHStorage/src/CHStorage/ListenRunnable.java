@@ -69,7 +69,8 @@ public class ListenRunnable implements Runnable {
 				
 				broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
 				sh.SendMessage( response.toString() );
-
+				
+				//if (ForceStop) this.seppuku("ForceStop");
 				continue;
 
 			} catch (JSONException e) {
@@ -91,7 +92,7 @@ public class ListenRunnable implements Runnable {
 					String key = new String(dst, "ISO-8859-1");
 					
 					command.put("key", key);
-					command.put("keyBA", key);
+					//command.put("keyBA", key);
 					
 					switch ( firstbyte ){
 					case 1: 
@@ -100,12 +101,11 @@ public class ListenRunnable implements Runnable {
 						// get the value - 1024 bytes
 						byte[] bytesvalue = new byte[1024];
 						bb.get(bytesvalue);
-						//String stringvalue = new String(bytesvalue, "ISO-8859-1");
-						//command.put("value", stringvalue );
+
 						JSONArray JAV = new JSONArray();
 						for (int i = 0; i < 1024; i++ )
 							JAV.put( (int) bytesvalue[i]);
-						command.put("valueBA", JAV);
+						command.put("value", JAV);
 						break;
 					case 2:
 						command.put("get", true);
@@ -116,10 +116,9 @@ public class ListenRunnable implements Runnable {
 					default:
 						broadcast("Bad command?");
 						byte[] bytes = new byte[1];
-						bytes[0] = 5;
-						//Tell the user its an invalid command
+						bytes[0] = 5;	//Tell the user its an invalid command
 						sh.SendBytes(bytes);
-						if (ForceStop) this.seppuku("ForceStop.");
+						if (ForceStop) this.seppuku("ForceStop");
 						continue;
 					}
 					
@@ -134,9 +133,8 @@ public class ListenRunnable implements Runnable {
 						bytes = new byte[1025];
 						bytes[0] = ErrorCodeByte;
 						for (int i = 0; i < 1024; i++){
-							int boite = response.getJSONArray("value").getInt(i);
-							bytes[i+1] = (byte) boite;
-									//(byte) response.getString("value").charAt(i);
+							int nextbyte = response.getJSONArray("value").getInt(i);
+							bytes[i+1] = (byte) nextbyte;
 						}
 					}else{
 						bytes = new byte[1];
@@ -146,26 +144,25 @@ public class ListenRunnable implements Runnable {
 					broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
 					broadcast( "Sent in hex:" + SocketHelper.byteArrayToHexString(bytes) );
 					sh.SendBytes(bytes);
-					if (ForceStop) this.seppuku("ForceStop.");
+					if (ForceStop) this.seppuku("ForceStop");
 					continue;
 					
 				}catch ( BufferUnderflowException e2) {
 					broadcast("Poorly formatted message");
 					byte[] bytes = new byte[1];
-					bytes[0] = 5;
-					//Tell the user its an invalid command
+					bytes[0] = 5;	//Tell the user its an invalid command
 					sh.SendBytes(bytes);
-					if (ForceStop) this.seppuku("ForceStop.");
+					if (ForceStop) this.seppuku("ForceStop");
 					continue;
+					
 				}catch (JSONException | UnsupportedEncodingException e3 ){
-					// Shouldn't get here? All hardcoded?
-					//e3.printStackTrace(); //TODO
+					// JSON Array failed... try string?
 					broadcast("Poorly formatted message - JSON conversion fail?");
 					byte[] bytes = new byte[1];
 					bytes[0] = 5;
 					//Tell the user its an invalid command
 					sh.SendBytes(bytes);
-					if (ForceStop) this.seppuku("ForceStop.");
+					if (ForceStop) this.seppuku("ForceStop");
 					continue;
 				}
 				
