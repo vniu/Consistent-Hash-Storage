@@ -5,7 +5,8 @@ import java.net.Socket;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
-import org.json.JSONArray;
+import javax.xml.bind.DatatypeConverter;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -89,11 +90,9 @@ public class ListenRunnable implements Runnable {
 					// get the key - 32 bytes
 					byte[] dst = new byte[32];
 					bb.get(dst);
-					String key = new String(dst, "ISO-8859-1");
-					
-					command.put("key", key);
-					//command.put("keyBA", key);
-					
+										
+					command.put( "key", DatatypeConverter.printHexBinary(dst) );
+
 					switch ( firstbyte ){
 					case 1: 
 						command.put("put", true);
@@ -101,11 +100,8 @@ public class ListenRunnable implements Runnable {
 						// get the value - 1024 bytes
 						byte[] bytesvalue = new byte[1024];
 						bb.get(bytesvalue);
-
-						JSONArray JAV = new JSONArray();
-						for (int i = 0; i < 1024; i++ )
-							JAV.put( (int) bytesvalue[i]);
-						command.put("value", JAV);
+						String hexval = DatatypeConverter.printHexBinary(bytesvalue);
+						command.put("value", hexval);
 						break;
 					case 2:
 						command.put("get", true);
@@ -132,9 +128,10 @@ public class ListenRunnable implements Runnable {
 					if (command.has("get") && ErrorCodeByte == 0 ){
 						bytes = new byte[1025];
 						bytes[0] = ErrorCodeByte;
+						byte[] hexval = DatatypeConverter.parseHexBinary(response.getString("value"));
+						
 						for (int i = 0; i < 1024; i++){
-							int nextbyte = response.getJSONArray("value").getInt(i);
-							bytes[i+1] = (byte) nextbyte;
+							bytes[i+1] = hexval[i];
 						}
 					}else{
 						bytes = new byte[1];

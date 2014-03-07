@@ -99,13 +99,8 @@ public class NodeMaster {
 	public synchronized JSONObject putKV( JSONObject j ) {
 
 		try {
-			//if (j.has("keyBA")){
-			//	this.storage.put( j.getString( "keyBA" ), j.get("valueBA") );
-			//}else{
-				//this.storage.put( j.getString( "key" ), j.getString( "value" ) );
-				this.storage.put( j.getString( "key" ), j.get( "value" ) );
-				broadcast("Put key: " + j.getString( "key" ) );
-			//}
+			this.storage.put( j.getString( "key" ), j.get( "value" ) );
+			broadcast("Put key: " + j.getString( "key" ) );
 			
 			return craftResponse(0);
 			
@@ -126,16 +121,6 @@ public class NodeMaster {
 		//value;
 		JSONObject response = craftResponse(0);
 		try {
-			/*
-			if (j.has("keyBA")){
-				JSONArray value = (JSONArray) this.storage.get( j.getString( "keyBA" ) );
-				response.put("value", value);
-			}else{
-				String value = this.storage.getString( j.getString( "key" ) );
-				response.put("value", value);
-				broadcast("Retrieved key: " + j.getString( "key" ) );
-			}
-			*/
 			Object value = this.storage.get( j.getString( "key" ) );
 			response.put("value", value);
 			
@@ -316,6 +301,5 @@ public class NodeMaster {
 		}
 		return response;
 	}
-
 
 }
