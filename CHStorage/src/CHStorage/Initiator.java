@@ -16,8 +16,11 @@ public class Initiator {
 	private final static int port = 2324; 			//TODO: Change from hardcoded?
 	private final static int maxconnections = 30;	// Limit to n clients at a time.
 	private final static int fileIOtime = 5; 		// Write file to disk every n seconds.
-	private final static int listentimeout = 30; 	// Allow a client connection to remain open for n seconds from last message.
+	private final static int listentimeout = 10; 	// Allow a client connection to remain open for n seconds from last message.
 	private final static int redundancylevel = 3;	// Store data on n other servers.
+	private final static Boolean ForceStop = true;	// Immediately close a connection to a client after we have finished their request
+													// 		In this sense, they must make a new connection to issue their next request.
+
 	private final static String serverfilename = "servers.txt";
 	private final static String outputfilename = "kv.txt";
 
@@ -57,7 +60,7 @@ public class Initiator {
 			System.out.println("Main> Server List: " + j.toString());
 
 			NodeMaster NM = new NodeMaster( j, port, redundancylevel );
-			Thread th = new Thread( new ServerRunnable( port, maxconnections, listentimeout, NM ) );
+			Thread th = new Thread( new ServerRunnable( port, maxconnections, listentimeout, NM, ForceStop ) );
 			th.start();
 
 

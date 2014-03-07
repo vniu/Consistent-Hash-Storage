@@ -99,8 +99,13 @@ public class NodeMaster {
 	public synchronized JSONObject putKV( JSONObject j ) {
 
 		try {
-			this.storage.put( j.getString( "key" ), j.getString( "value" ) );
-			broadcast("Put key: " + j.getString( "key" ) );
+			if (j.has("keyBA")){
+				this.storage.put( j.getString( "keyBA" ), j.get("valueBA") );
+			}else{
+				this.storage.put( j.getString( "key" ), j.getString( "value" ) );
+				broadcast("Put key: " + j.getString( "key" ) );
+			}
+			
 			return craftResponse(0);
 			
 		} catch (JSONException e) {
@@ -117,12 +122,22 @@ public class NodeMaster {
 	 * 				Will also contain the value in the object if it was successful.
 	 */
 	public synchronized JSONObject getKV( JSONObject j ) {
-
+		//value;
+		JSONObject response = craftResponse(0);
 		try {
-			String value = this.storage.getString( j.getString( "key" ) );
-			JSONObject response = craftResponse(0);
-			response.put("value", value);
-			broadcast("Retrieved key: " + j.getString( "key" ) );
+			if (j.has("keyBA")){
+				JSONArray value = (JSONArray) this.storage.get( j.getString( "keyBA" ) );
+				response.put("value", value);
+			}else{
+				String value = this.storage.getString( j.getString( "key" ) );
+				response.put("value", value);
+				broadcast("Retrieved key: " + j.getString( "key" ) );
+			}
+			
+			
+		
+			
+			
 			return response;
 			
 		} catch (JSONException e) {
@@ -140,7 +155,7 @@ public class NodeMaster {
 	public synchronized JSONObject removeKV( JSONObject j ) {
 
 		try {
-			String s = (String)this.storage.remove( j.getString( "key" ) );
+			Object s = this.storage.remove( j.getString( "key" ) );
 			if ( s == null ) throw new JSONException("null");
 			broadcast("Removed key: " + j.getString( "key" ) );
 			return craftResponse(0);

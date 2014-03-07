@@ -14,6 +14,7 @@ public class ServerRunnable implements Runnable {
 	private int timeout;
 	private NodeMaster NM;
 	private volatile Boolean running;
+	private Boolean ForceStop;
 
 	/**
 	 * 		Constructor - only links resources. Start it as a thread to begin listening.
@@ -22,13 +23,14 @@ public class ServerRunnable implements Runnable {
 	 * @param totalmaxconnections	How many connections can be allocated at once
 	 * @param nodemaster			The NM to be passed along to clients
 	 */
-	public ServerRunnable( int port, int totalmaxconnections, int listentimeout, NodeMaster nodemaster ) {
+	public ServerRunnable( int port, int totalmaxconnections, int listentimeout, NodeMaster nodemaster, Boolean _ForceStop ) {
 		this.serverport = port;
 		this.NM = nodemaster;
 		this.timeout = listentimeout;
 		runningthreads = new Thread[totalmaxconnections];
 		this.maxconnections = totalmaxconnections;
 		running = true;
+		this.ForceStop = _ForceStop;
 	}
 
 	private void broadcast ( String m ){
@@ -69,7 +71,7 @@ public class ServerRunnable implements Runnable {
 				//		Also inform this new client that we can't help them?
 			}
 
-			Thread client = new Thread( new ListenRunnable( clientSocket, NM, timeout ) );
+			Thread client = new Thread( new ListenRunnable( clientSocket, NM, timeout, ForceStop ) );
 			client.start();
 			runningthreads[freeslot] = client;
 

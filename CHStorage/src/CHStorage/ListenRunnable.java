@@ -4,6 +4,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -16,6 +18,7 @@ public class ListenRunnable implements Runnable {
 	private NodeMaster NM;
 	private String theirip;
 	private int timeout;
+	private Boolean ForceStop;
 
 	/**
 	 * 		Constructor - will allocate a connection to clientSocket. Start it as a thread to begin listening.
@@ -24,11 +27,12 @@ public class ListenRunnable implements Runnable {
 	 * @param nodemaster	The executor to send our clients' requests to.
 	 * @param listentimeout	How long we wait before we consider a client no longer active
 	 */
-	public ListenRunnable( Socket clientsocket, NodeMaster nodemaster, int listentimeout ) {
+	public ListenRunnable( Socket clientsocket, NodeMaster nodemaster, int listentimeout, Boolean _ForceStop ) {
 		this.sh = new SocketHelper(clientsocket);
 		this.theirip = clientsocket.getInetAddress().toString();
 		this.NM = nodemaster;
 		this.timeout = listentimeout;
+		this.ForceStop = _ForceStop;
 
 		running = true;
 	}
@@ -87,6 +91,7 @@ public class ListenRunnable implements Runnable {
 					String key = new String(dst, "ISO-8859-1");
 					
 					command.put("key", key);
+					command.put("keyBA", key);
 					
 					switch ( firstbyte ){
 					case 1: 
@@ -95,8 +100,12 @@ public class ListenRunnable implements Runnable {
 						// get the value - 1024 bytes
 						byte[] bytesvalue = new byte[1024];
 						bb.get(bytesvalue);
-						String stringvalue = new String(bytesvalue, "ISO-8859-1");
-						command.put("value", stringvalue );
+						//String stringvalue = new String(bytesvalue, "ISO-8859-1");
+						//command.put("value", stringvalue );
+						JSONArray JAV = new JSONArray();
+						for (int i = 0; i < 1024; i++ )
+							JAV.put( (int) bytesvalue[i]);
+						command.put("valueBA", JAV);
 						break;
 					case 2:
 						command.put("get", true);
@@ -110,6 +119,7 @@ public class ListenRunnable implements Runnable {
 						bytes[0] = 5;
 						//Tell the user its an invalid command
 						sh.SendBytes(bytes);
+						if (ForceStop) this.seppuku("ForceStop.");
 						continue;
 					}
 					
@@ -124,7 +134,9 @@ public class ListenRunnable implements Runnable {
 						bytes = new byte[1025];
 						bytes[0] = ErrorCodeByte;
 						for (int i = 0; i < 1024; i++){
-							bytes[i+1] = (byte) response.getString("value").charAt(i);
+							int boite = response.getJSONArray("value").getInt(i);
+							bytes[i+1] = (byte) boite;
+									//(byte) response.getString("value").charAt(i);
 						}
 					}else{
 						bytes = new byte[1];
@@ -132,7 +144,9 @@ public class ListenRunnable implements Runnable {
 					}
 					
 					broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
+					broadcast( "Sent in hex:" + SocketHelper.byteArrayToHexString(bytes) );
 					sh.SendBytes(bytes);
+					if (ForceStop) this.seppuku("ForceStop.");
 					continue;
 					
 				}catch ( BufferUnderflowException e2) {
@@ -141,14 +155,17 @@ public class ListenRunnable implements Runnable {
 					bytes[0] = 5;
 					//Tell the user its an invalid command
 					sh.SendBytes(bytes);
+					if (ForceStop) this.seppuku("ForceStop.");
 					continue;
 				}catch (JSONException | UnsupportedEncodingException e3 ){
 					// Shouldn't get here? All hardcoded?
+					//e3.printStackTrace(); //TODO
 					broadcast("Poorly formatted message - JSON conversion fail?");
 					byte[] bytes = new byte[1];
 					bytes[0] = 5;
 					//Tell the user its an invalid command
 					sh.SendBytes(bytes);
+					if (ForceStop) this.seppuku("ForceStop.");
 					continue;
 				}
 				

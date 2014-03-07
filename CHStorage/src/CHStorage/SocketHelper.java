@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -57,7 +56,7 @@ public class SocketHelper {
 			this.TCP_socket = new Socket(server, port);
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
-			this.TCP_socket.setSoTimeout(7000);
+			this.TCP_socket.setSoTimeout(10000);
 		} catch (UnknownHostException e) {
 			System.out.printf("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
 			return 2;
@@ -206,8 +205,8 @@ public class SocketHelper {
 	 */
 	public void SendBytes ( byte[] bytes ){
 		try {
-			SendMessage ( new String(bytes, "ISO-8859-1") ); // this should work...
-		} catch (UnsupportedEncodingException e) {}
+			this.TCP_socket_os.write(bytes);
+		} catch (IOException e) {}
 	}
 
 }
