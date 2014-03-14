@@ -43,6 +43,12 @@ public class SocketHelper {
 			//e.printStackTrace();	// invalid socket, shouldn't get here.
 		}
 	}
+	
+	public void broadcast( String s ){
+		if ( !SysValues.debug ) return;
+
+		System.out.println( "SocketHelper> " + s );
+	}
 
 	/**
 	 * 		Opens a socket connection to the given server and port.
@@ -58,12 +64,12 @@ public class SocketHelper {
 			this.TCP_socket_is = TCP_socket.getInputStream();
 			this.TCP_socket.setSoTimeout(10000);
 		} catch (UnknownHostException e) {
-			System.out.printf("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
+			broadcast("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
 			return 2;
 		} catch (IOException e) {
 			if (e.getLocalizedMessage().equals("Connection refused") )
 				return 1;
-			System.out.printf("NOTICE:" + e.getLocalizedMessage() + ", IO E on socket creation.\n" );
+			broadcast("NOTICE:" + e.getLocalizedMessage() + ", IO E on socket creation.\n" );
 			return 2;
 		}
 		return 0;
@@ -76,7 +82,7 @@ public class SocketHelper {
 		try {
 			if ( TCP_socket != null && TCP_socket.isConnected() ){
 				TCP_socket.close();
-				//System.out.printf("Connection closed.\n");
+				//broadcast("Connection closed.\n");
 			}
 		}catch (IOException e) {
 			//TODO:
@@ -121,9 +127,9 @@ public class SocketHelper {
 			
 			int readattempts = 0;
 			while( !br.ready() ){ // Check if we actually have stuff to read
-				Thread.sleep(100);
+				Thread.sleep(1);
 				readattempts++;
-				if (readattempts > t*10 )
+				if (readattempts > t*1000 )
 					return null;
 			}
 			s = new String(br.readLine().getBytes("ISO-8859-1"), "ISO-8859-1");
@@ -148,9 +154,9 @@ public class SocketHelper {
 			
 			int readattempts = 0;
 			while ( bis.available() == 0 ){
-				Thread.sleep(100);
+				Thread.sleep(1);
 				readattempts++;
-				if (readattempts > t*10 )
+				if (readattempts > t*1000 )
 					return null;
 			}
 			bis.mark(1);
@@ -181,7 +187,7 @@ public class SocketHelper {
 			
 		} catch (IOException | InterruptedException e) { // TODO:: ????
 			// TODO Auto-generated catch block
-			System.out.println( e.getLocalizedMessage() );
+			broadcast( e.getLocalizedMessage() );
 			e.printStackTrace();
 		}
 		return null; // ??

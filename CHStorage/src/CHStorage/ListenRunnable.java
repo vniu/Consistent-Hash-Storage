@@ -18,8 +18,6 @@ public class ListenRunnable implements Runnable {
 	private volatile Boolean running;
 	private NodeMaster NM;
 	private String theirip;
-	private int timeout;
-	private Boolean ForceStop;
 
 	/**
 	 * 		Constructor - will allocate a connection to clientSocket. Start it as a thread to begin listening.
@@ -28,17 +26,16 @@ public class ListenRunnable implements Runnable {
 	 * @param nodemaster	The executor to send our clients' requests to.
 	 * @param listentimeout	How long we wait before we consider a client no longer active
 	 */
-	public ListenRunnable( Socket clientsocket, NodeMaster nodemaster, int listentimeout, Boolean _ForceStop ) {
+	public ListenRunnable( Socket clientsocket, NodeMaster nodemaster ) {
 		this.sh = new SocketHelper(clientsocket);
 		this.theirip = clientsocket.getInetAddress().toString();
 		this.NM = nodemaster;
-		this.timeout = listentimeout;
-		this.ForceStop = _ForceStop;
 
 		running = true;
 	}
 
 	private void broadcast( String m ){
+		if ( !SysValues.debug ) return;
 		// Add in thread ID so we can see who's who
 		String ID = Long.toString( Thread.currentThread().getId() ); 
 		System.out.println( "ServerThread(" + ID + ")> " + m );
@@ -47,14 +44,13 @@ public class ListenRunnable implements Runnable {
 	@Override
 	public void run() {
 		while ( running ){
-
-			String message = sh.ReceiveMessage( timeout );
+			String message = sh.ReceiveMessage( SysValues.listentimeout );
 
 			if (message == null) {
 				this.seppuku("Null or timeout");
 				return;
 			}
-
+			
 			try {
 				// A JSON object comes from another node, or a user typing it as a string
 				JSONObject j = new JSONObject(message);
@@ -65,13 +61,15 @@ public class ListenRunnable implements Runnable {
 					this.seppuku("Stop");
 					return;
 				}
-
+				
+				if (SysValues.InternalOnly) j.put("internal", true);
+				
 				JSONObject response = NM.keycommand( j );
 				
 				broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
 				sh.SendMessage( response.toString() );
 				
-				//if (ForceStop) this.seppuku("ForceStop");
+				if (SysValues.ForceStop) this.seppuku("ForceStop");
 				continue;
 
 			} catch (JSONException e) {
@@ -114,10 +112,11 @@ public class ListenRunnable implements Runnable {
 						byte[] bytes = new byte[1];
 						bytes[0] = 5;	//Tell the user its an invalid command
 						sh.SendBytes(bytes);
-						if (ForceStop) this.seppuku("ForceStop");
+						if (SysValues.ForceStop) this.seppuku("ForceStop");
 						continue;
 					}
 					
+					if (SysValues.InternalOnly) command.put("internal", true);
 					// Okay, we have constructed the command, send it into the system
 					JSONObject response = NM.keycommand( command );
 					
@@ -141,7 +140,7 @@ public class ListenRunnable implements Runnable {
 					broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
 					broadcast( "Sent in hex:" + SocketHelper.byteArrayToHexString(bytes) );
 					sh.SendBytes(bytes);
-					if (ForceStop) this.seppuku("ForceStop");
+					if (SysValues.ForceStop) this.seppuku("ForceStop");
 					continue;
 					
 				}catch ( BufferUnderflowException e2) {
@@ -149,7 +148,7 @@ public class ListenRunnable implements Runnable {
 					byte[] bytes = new byte[1];
 					bytes[0] = 5;	//Tell the user its an invalid command
 					sh.SendBytes(bytes);
-					if (ForceStop) this.seppuku("ForceStop");
+					if (SysValues.ForceStop) this.seppuku("ForceStop");
 					continue;
 					
 				}catch (JSONException | UnsupportedEncodingException e3 ){
@@ -159,7 +158,7 @@ public class ListenRunnable implements Runnable {
 					bytes[0] = 5;
 					//Tell the user its an invalid command
 					sh.SendBytes(bytes);
-					if (ForceStop) this.seppuku("ForceStop");
+					if (SysValues.ForceStop) this.seppuku("ForceStop");
 					continue;
 				}
 				

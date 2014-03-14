@@ -13,18 +13,7 @@ import org.json.JSONObject;
  * 		Responsible for initializing threads, and doing file IO.
  */
 public class Initiator {
-	private final static int port = 2324; 			//TODO: Change from hardcoded?
-	private final static int maxconnections = 30;	// Limit to n clients at a time.
-	private final static int fileIOtime = 5; 		// Write file to disk every n seconds.
-	private final static int listentimeout = 10; 	// Allow a client connection to remain open for n seconds from last message.
-	private final static int redundancylevel = 3;	// Store data on n other servers.
-	private final static Boolean ForceStop = true;	// Immediately close a connection to a client after we have finished their request
-													// 		In this sense, they must make a new connection to issue their next request.
-
-	private final static String serverfilename = "servers.txt";
-	private final static String outputfilename = "kv.txt";
-
-
+	
 	/**
 	 * 		The entry point for the project. Will start up all services, and output results to a file.
 	 * 
@@ -45,7 +34,7 @@ public class Initiator {
 
 		try {
 			// Build our server list out of the .txt file
-			File file = new File( serverfilename );
+			File file = new File( SysValues.serverfilename );
 			FileInputStream fis = new FileInputStream(file);
 
 			StringBuilder sb = new StringBuilder();
@@ -59,17 +48,17 @@ public class Initiator {
 			JSONObject j = new JSONObject(sb.toString());
 			System.out.println("Main> Server List: " + j.toString());
 
-			NodeMaster NM = new NodeMaster( j, port, redundancylevel );
-			Thread th = new Thread( new ServerRunnable( port, maxconnections, listentimeout, NM, ForceStop ) );
+			NodeMaster NM = new NodeMaster( j );
+			Thread th = new Thread( new ServerRunnable( NM ) );
 			th.start();
 
 
 			while(true){
-				Thread.sleep( fileIOtime * 1000 );
+				Thread.sleep( SysValues.fileIOtime * 1000 );
 
 				try {
 					BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-							new FileOutputStream( outputfilename ), "ISO-8859-1"));
+							new FileOutputStream( SysValues.outputfilename ), "ISO-8859-1"));
 
 					// Write node's storage data to text file for external viewing
 					writer.write( NM.getStorage().toString() );
@@ -81,7 +70,7 @@ public class Initiator {
 			}
 
 		}catch (JSONException | IOException e) {
-			System.out.println("Error: Check " + serverfilename +  ". Exiting: " + e.getLocalizedMessage());
+			System.out.println("Error: Check " + SysValues.serverfilename +  ". Exiting: " + e.getLocalizedMessage());
 			return;
 		}catch ( InterruptedException e ){}
 	}

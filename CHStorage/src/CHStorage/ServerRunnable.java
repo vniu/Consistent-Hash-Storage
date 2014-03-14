@@ -9,12 +9,8 @@ import java.net.Socket;
  */
 public class ServerRunnable implements Runnable {
 	private Thread[] runningthreads;
-	private int maxconnections;
-	private int serverport;
-	private int timeout;
 	private NodeMaster NM;
 	private volatile Boolean running;
-	private Boolean ForceStop;
 
 	/**
 	 * 		Constructor - only links resources. Start it as a thread to begin listening.
@@ -25,17 +21,15 @@ public class ServerRunnable implements Runnable {
 	 * @param listentimeout			The amount of time to wait until we determine a connection is invalid.
 	 * @param _ForceStop			Whether or not to have persistent connections.
 	 */
-	public ServerRunnable( int port, int totalmaxconnections, int listentimeout, NodeMaster nodemaster, Boolean _ForceStop ) {
-		this.serverport = port;
+	public ServerRunnable( NodeMaster nodemaster ) {
 		this.NM = nodemaster;
-		this.timeout = listentimeout;
-		runningthreads = new Thread[totalmaxconnections];
-		this.maxconnections = totalmaxconnections;
+		runningthreads = new Thread[SysValues.maxconnections];
 		running = true;
-		this.ForceStop = _ForceStop;
 	}
 
 	private void broadcast ( String m ){
+		if ( !SysValues.debug ) return;
+		
 		System.out.println( "Server> " + m );
 	}
 
@@ -44,7 +38,7 @@ public class ServerRunnable implements Runnable {
 		ServerSocket serverSocket = null;
 
 		try {
-			serverSocket = new ServerSocket( serverport );
+			serverSocket = new ServerSocket( SysValues.port );
 		} catch (IOException e2) {
 			broadcast("Port in use?");
 			e2.printStackTrace();
@@ -67,12 +61,12 @@ public class ServerRunnable implements Runnable {
 			while ( (freeslot = cleanthreads()) < 0 ){
 				broadcast("No room for new connection...");
 				try {
-					Thread.sleep(1000);
+					Thread.sleep(100);
 				} catch (InterruptedException e1) {}
 				
 				//TODO: Do something if stuck here for too long?
 				//		Also inform this new client that we can't help them?
-				if ( timer > this.timeout ){
+				if ( timer/10 > SysValues.listentimeout ){
 					broadcast("Server is overloaded.");
 					byte[] bytes = new byte[1];
 					bytes[0] = 3;	//Overloaded
@@ -84,9 +78,11 @@ public class ServerRunnable implements Runnable {
 				timer++;
 			}
 			
-			if (timer <= this.timeout ){
-				Thread client = new Thread( new ListenRunnable( clientSocket, NM, timeout, ForceStop ) );
+			if (timer <= SysValues.listentimeout ){
+				Thread client = new Thread( new ListenRunnable( clientSocket, NM ) );
+				
 				client.start();
+				
 				runningthreads[freeslot] = client;
 			}
 		} // End of while
@@ -106,7 +102,7 @@ public class ServerRunnable implements Runnable {
 		int freeslot = -1;
 
 		// Look for any threads that have ended
-		for ( int i = 0; i < maxconnections; i++  ){
+		for ( int i = 0; i < SysValues.maxconnections; i++  ){
 
 			if ( runningthreads[i] == null ){
 				freeslot = i; // We can use any slot thats free

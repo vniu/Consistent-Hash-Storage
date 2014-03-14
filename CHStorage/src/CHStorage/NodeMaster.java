@@ -15,9 +15,7 @@ import org.json.JSONObject;
 public class NodeMaster {
 	private JSONArray servers; 
 	private JSONObject storage;
-	private int port;
-	@SuppressWarnings("unused")
-	private int redundancylevel;
+
 
 	/*
 	 * TODO: 	Limit storage space allowed to 64MB
@@ -32,14 +30,14 @@ public class NodeMaster {
 	 * @param _redundancylevel	The amount of other servers to backup the data on.
 	 * @throws JSONException	if something was wrong with the server list format.
 	 */
-	public NodeMaster( JSONObject serverlist, int serverport, int _redundancylevel ) throws JSONException {
+	public NodeMaster( JSONObject serverlist ) throws JSONException {
 		servers = serverlist.getJSONArray("servers");
 		storage = new JSONObject();
-		this.port = serverport;
-		this.redundancylevel = _redundancylevel;
 	}
 
 	private static void broadcast ( String m ) {
+		if ( !SysValues.debug ) return;
+		
 		System.out.println( "NodeMaster> " + m );
 	}
 
@@ -232,7 +230,7 @@ public class NodeMaster {
 	JSONObject sendMessageTo ( JSONObject j, String url ){
 		SocketHelper sh = new SocketHelper();
 		
-		if ( sh.CreateConnection( url, this.port ) != 0 ) {
+		if ( sh.CreateConnection( url, SysValues.port ) != 0 ) {
 			broadcast( "Response from external server failure (connection creation): " + url );
 			return craftResponse(3);	// TODO: node fail to connect
 		}
