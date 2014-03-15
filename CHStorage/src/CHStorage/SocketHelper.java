@@ -19,7 +19,8 @@ public class SocketHelper {
 	private Socket TCP_socket;
 	private OutputStream TCP_socket_os;
 	private InputStream TCP_socket_is;
-
+	private PrintWriter pw;
+	
 	/**
 	 * 		Default construction...
 	 */
@@ -37,8 +38,8 @@ public class SocketHelper {
 			this.TCP_socket = TCP_socket;
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
-			this.TCP_socket.setSoTimeout(10000); //TODO: hardcoded 10 seconds...
-
+			this.TCP_socket.setSoTimeout(SysValues.listentimeout);
+			this.pw = new PrintWriter(TCP_socket_os);
 		} catch (IOException e) {
 			//e.printStackTrace();	// invalid socket, shouldn't get here.
 		}
@@ -63,6 +64,7 @@ public class SocketHelper {
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
 			this.TCP_socket.setSoTimeout(10000);
+			this.pw = new PrintWriter(TCP_socket_os);
 		} catch (UnknownHostException e) {
 			broadcast("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
 			return 2;
@@ -91,26 +93,6 @@ public class SocketHelper {
 		}
 	}
 
-	/**
-	 * 		Converts a byte array into a hex string.
-	 * 
-	 * @param bytes 	Byte array to be converted.
-	 * @return 			A string of hex values.
-	 */
-	public static String byteArrayToHexString(byte[] bytes) {
-		StringBuffer buf = new StringBuffer();
-		String str;
-		int val;
-
-		for (int i=0; i<bytes.length; i++) {
-			val = (int)bytes[i] & 0x000000FF;
-			str = Integer.toHexString(val);
-			while ( str.length() < 2 )
-				str = "0" + str;
-			buf.append( str );
-		}
-		return buf.toString().toUpperCase();
-	}
 
 	/**		DEPRECIATED unfortunately
 	 * 		Attempts to receive a message over the socket connection.
@@ -176,21 +158,18 @@ public class SocketHelper {
 			// oh god here we go
 			byte[] bytes;
 			if (byte1 == (byte)1){
-				bytes = new byte[1057];		// LOL LOOK AT THAT HARDCODED NUMBER!
+				bytes = new byte[1057];		// LOOK AT THAT HARDCODED NUMBER!
 				bis.read(bytes, 0, 1057); 
 			}else{
-				bytes = new byte[33]; 		// *vomits*
+				bytes = new byte[33]; 		// ...
 				bis.read(bytes, 0, 33); 
 			}
 			String s = new String(bytes, "ISO-8859-1");
 			return s;
 			
 		} catch (IOException | InterruptedException e) { // TODO:: ????
-			// TODO Auto-generated catch block
-			broadcast( e.getLocalizedMessage() );
-			e.printStackTrace();
+			return null; // connection closed?
 		}
-		return null; // ??
 	}
 
 	/**
@@ -199,7 +178,8 @@ public class SocketHelper {
 	 * @param m		The string to send.
 	 */
 	public void SendMessage(String m){
-		PrintWriter pw = new PrintWriter(TCP_socket_os);
+		if (TCP_socket_os == null) return;
+		//PrintWriter pw = new PrintWriter(TCP_socket_os);
 		pw.println(m);
 		pw.flush();
 	}
@@ -211,8 +191,10 @@ public class SocketHelper {
 	 */
 	public void SendBytes ( byte[] bytes ){
 		try {
-			this.TCP_socket_os.write(bytes);
-		} catch (IOException e) {}
+			if (this.TCP_socket_os != null)
+				this.TCP_socket_os.write(bytes);
+		} catch (IOException e) {
+		}
 	}
 
 }

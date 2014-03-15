@@ -24,7 +24,6 @@ public class ListenRunnable implements Runnable {
 	 * 
 	 * @param clientsocket	The client we will connect to.
 	 * @param nodemaster	The executor to send our clients' requests to.
-	 * @param listentimeout	How long we wait before we consider a client no longer active
 	 */
 	public ListenRunnable( Socket clientsocket, NodeMaster nodemaster ) {
 		this.sh = new SocketHelper(clientsocket);
@@ -64,7 +63,7 @@ public class ListenRunnable implements Runnable {
 				
 				if (SysValues.InternalOnly) j.put("internal", true);
 				
-				JSONObject response = NM.keycommand( j );
+				JSONObject response = NM.keycommand( j ); // Send the response into the system
 				
 				broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
 				sh.SendMessage( response.toString() );
@@ -80,17 +79,19 @@ public class ListenRunnable implements Runnable {
 					JSONObject command = new JSONObject();
 
 					bb = ByteBuffer.wrap( message.getBytes("ISO-8859-1") );
-					broadcast("Got in hex: " + SocketHelper.byteArrayToHexString(message.getBytes("ISO-8859-1")));
+					broadcast("Got in hex: " + DatatypeConverter.printHexBinary(message.getBytes("ISO-8859-1")));
 					
 					// get the command - 1 byte
 					byte firstbyte = bb.get();
 					
 					// get the key - 32 bytes
-					byte[] dst = new byte[32];
-					bb.get(dst);
+					if ( firstbyte != 4 ){
+						byte[] dst = new byte[32];
+						bb.get(dst);
 										
-					command.put( "key", DatatypeConverter.printHexBinary(dst) );
-
+						command.put( "key", DatatypeConverter.printHexBinary(dst) );
+					}
+				
 					switch ( firstbyte ){
 					case 1: 
 						command.put("put", true);
@@ -106,6 +107,9 @@ public class ListenRunnable implements Runnable {
 						break;
 					case 3:
 						command.put("remove", true);
+						break;
+					case 4:
+						command.put("shutdown", true);
 						break;
 					default:
 						broadcast("Bad command?");
@@ -138,7 +142,7 @@ public class ListenRunnable implements Runnable {
 					}
 					
 					broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
-					broadcast( "Sent in hex:" + SocketHelper.byteArrayToHexString(bytes) );
+					broadcast( "Sent in hex:" + DatatypeConverter.printHexBinary(bytes) );
 					sh.SendBytes(bytes);
 					if (SysValues.ForceStop) this.seppuku("ForceStop");
 					continue;
@@ -169,12 +173,11 @@ public class ListenRunnable implements Runnable {
 
 
 	/**
-	 *  hnnnnnnnng
+	 *  Closes the connection and stops the thread.
 	 */
 	private void seppuku( String m ){
 		broadcast( m + ", closing: " + theirip);
 		sh.CloseConnection();
-		//TODO: more research on thread killing?
 		running = false;
 	}
 }
