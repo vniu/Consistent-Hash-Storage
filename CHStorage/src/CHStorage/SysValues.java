@@ -1,6 +1,6 @@
 package CHStorage;
 
-public class SysValues {	//TODO: Change all these from hardcoded?
+public class SysValues {	//TODO: Change all these from hardcoded? Load from text file perhaps?
 	
 	public final static int port = 2324; 			
 	public final static int internalport = 3333; 

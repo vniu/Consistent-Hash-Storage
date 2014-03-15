@@ -191,7 +191,10 @@ public class NodeMaster {
 	 */
 	public JSONObject sendmessageremote( JSONObject j ){
 		int location = 0;
-/*		String url = null;
+		
+/*		This is the old way - no redundancy.
+
+  		String url = null;
 		JSONObject response = new JSONObject();
 		
 
@@ -205,87 +208,104 @@ public class NodeMaster {
 		}
 
 		response = sendMessageTo ( j, url );
+		
 */
 
+		// A vector to hold redundant responses
 		Vector<JSONObject> responses = new Vector<JSONObject>();
+		
+		// An array of all current ErrorCodes from the responses: Should be populated with -1 if no response yet.
 		int[] responsecodes = new int[SysValues.redundancylevel];
+		
+		// An array of socket connections (using the helper)
 		Vector<SocketHelper> shs = new Vector<SocketHelper>();
+		
 		try {
-
-			j.put("internal", true);
-			location = mapto ( j.getString("key") );
-
+			j.put("internal", true); 					// Notify of internal connection or else we get recursion
+			location = mapto ( j.getString("key") );	// Get the initial location
+			
+			// Initialize the connection across n redundant locations
 			for ( int i = 0; i < SysValues.redundancylevel; i++){
-				responsecodes[i] = -1; //need this later
-				if ( location == servers.length() ) 
+				
+				responsecodes[i] = -1; // As per convention, initialize response code to -1
+				
+				if ( location == servers.length() ) // Ensure we loop around the servers properly
 					location = 0;
 
 				String redundanturl;
-				redundanturl = this.servers.getString(location);
+				redundanturl = this.servers.getString(location); // Get the current url
 
-				SocketHelper sh = new SocketHelper();
-				sh.CreateConnection(redundanturl, SysValues.internalport);
-				sh.SendMessage( j.toString() );
-				shs.add( sh );
-				location++;
+				SocketHelper sh = new SocketHelper();			
+				sh.CreateConnection(redundanturl, SysValues.internalport); // Make an internal connection to the url
+				sh.SendMessage( j.toString() );	// Send the url the command message
+				shs.add( sh );	// Add to the vector of connections for when we check for responses
+				
+				location++;		// Continue to the next location on the server list
 			}
-		} catch (JSONException e) {
+			
+		} catch (JSONException e) {		// If we get here then the response is bad
 			broadcast("Couldn't map to a location? Did not include key?");
 			return craftResponse(5);
 		}
 		
+		// Initial states of null/zero 
 		JSONObject agreed_response = null;
-		
 		Boolean have_agreement = false;
 		int responsecount = 0;
+		
 		double starttime = System.currentTimeMillis();
 		
 		while ( !have_agreement ){
 			
-			if ( (System.currentTimeMillis() - starttime) > SysValues.listentimeout*1000/2){ // TODO: Possibly change this
+			// If we are running out of time, we should just return the best response that we have
+			if ( (System.currentTimeMillis() - starttime) > SysValues.listentimeout*1000/2){ // TODO: Possibly change this from half the response time to something better
 				broadcast("TIMEOUT ON REDUNDANCY.");
 				
 				if ( mode(responsecodes)[1] == 0 ) { // Not good, max count is zero...
 					// Looks like we couldn't store it..
 					return craftResponse(4);
 				}
-				
-				// half out of time, just return the current mode.
+				//just return the current mode.
 				return responses.elementAt(mode(responsecodes)[0]);
 			}
 			
+			// Iterate over all the socket connections in the vector
 			Iterator<SocketHelper> iter = shs.iterator();
 			while( iter.hasNext() ){
 				SocketHelper working_sh = iter.next();
-				String str = working_sh.ReceiveMessage(0);
+				String str = working_sh.ReceiveMessage(0); // Check immediately, without waiting, for a message, and if its null just move on
 				if ( str == null ) continue;
 				
 				try {	
-					JSONObject resp = new JSONObject( str );
+					JSONObject resp = new JSONObject( str );	// Have a response from this connection
 				
 					working_sh.SendMessage("{\"stop\":true}");
 					working_sh.CloseConnection();
-					iter.remove();
+					iter.remove();				// Close and remove the connection from the vector, don't need it anymore
+					
 					responses.add(resp);
 					responsecodes[responsecount] = resp.getInt("ErrorCode");
-					responsecount++;
+					responsecount++;		// Add to our information the response and code
 					
-					if ( mode(responsecodes)[1] >= SysValues.mofnredundant ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){
+					// Check for a valid agreement -- m values (a mode) of the n redundant servers must agree
+					
+					if ( mode(responsecodes)[1] >= SysValues.mofnredundant ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){  <-- Old way, where m is defined as 'half'
+						
 						agreed_response = resp; // If the mode just became acceptable, the latest response must be part of the mode
 						have_agreement = true;
 						break;
-						
 					}
 					
-				} catch (JSONException e) {
+				} catch (JSONException e) { // Error with the response? Just move on.
 					continue;
 				}
 			}
 		}
+		
 		// We have enough responses
 		System.out.println("Using " + mode(responsecodes)[1] + " of " + responses.size() + " responses.");
 
-		// Tell anyone left that we no longer need their input, and close the connections
+		// Tell anyone left (has not been removed from the vector) that we no longer need their input, and close the connections
 		Iterator<SocketHelper> cleanup_iter = shs.iterator();
 		while( cleanup_iter.hasNext() ){
 			SocketHelper working_sh = cleanup_iter.next();
@@ -298,7 +318,7 @@ public class NodeMaster {
 	}
 	
 	/**
-	 * 		Calculate the mode and a location of a mode, Will ignore values of -1.
+	 * 		Calculate the mode and a location of a mode. Will ignore values of -1 as per convention.
 	 * 
 	 * @param inarray	The input array to check.
 	 * @return			Returns two ints, [0] being the Location of a mode, and [1] being the count of the mode.

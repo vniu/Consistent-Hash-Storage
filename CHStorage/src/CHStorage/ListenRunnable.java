@@ -43,10 +43,13 @@ public class ListenRunnable implements Runnable {
 	@Override
 	public void run() {
 		while ( running ){
+			long starttime = System.currentTimeMillis();
 			String message = sh.ReceiveMessage( SysValues.listentimeout );
-
+			
+			long endtime = System.currentTimeMillis();
+			
 			if (message == null) {
-				this.seppuku("Null or timeout");
+				this.seppuku("Null or timeout in: " + (endtime - starttime) );
 				return;
 			}
 			

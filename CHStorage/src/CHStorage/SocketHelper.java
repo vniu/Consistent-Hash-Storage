@@ -38,7 +38,7 @@ public class SocketHelper {
 			this.TCP_socket = TCP_socket;
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
-			this.TCP_socket.setSoTimeout(SysValues.listentimeout);
+			this.TCP_socket.setSoTimeout(SysValues.listentimeout*1000);
 			this.pw = new PrintWriter(TCP_socket_os);
 		} catch (IOException e) {
 			//e.printStackTrace();	// invalid socket, shouldn't get here.
@@ -63,7 +63,7 @@ public class SocketHelper {
 			this.TCP_socket = new Socket(server, port);
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
-			this.TCP_socket.setSoTimeout(10000);
+			this.TCP_socket.setSoTimeout(SysValues.listentimeout*1000);
 			this.pw = new PrintWriter(TCP_socket_os);
 		} catch (UnknownHostException e) {
 			broadcast("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
@@ -168,6 +168,8 @@ public class SocketHelper {
 			return s;
 			
 		} catch (IOException | InterruptedException e) { // TODO:: ????
+			broadcast( "READ ERROR: " + e.getLocalizedMessage());
+			//e.printStackTrace();
 			return null; // connection closed?
 		}
 	}

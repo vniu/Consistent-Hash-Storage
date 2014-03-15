@@ -37,9 +37,10 @@ public class Initiator {
 			sum += i.next();
 		}
 		
-		// Find the total average
+		// Find the total average response time
 		float totalaverage = (float) (sum / SysValues.threadcount);
 		
+		// Print out some nice values
 		System.out.println("Finished requests: " + (SysValues.threadcount*SysValues.tests_per_thread) + " in (millis): " + (endTime - startTime) );
 		System.out.println("Total average response time across all threads (millis): " + (totalaverage) );
 		System.out.println("Responses / second: " + (SysValues.threadcount*SysValues.tests_per_thread)*1000/ (endTime - startTime) ); // the 1000 to convert to seconds

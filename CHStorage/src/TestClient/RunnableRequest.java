@@ -10,6 +10,11 @@ import java.util.Vector;
 public class RunnableRequest implements Runnable  {
 	private Vector<Float> averagevector;
 	
+	/**
+	 * 		Constructor
+	 * 
+	 * @param _averagevector 	The common vector to place the resulting average into.
+	 */
 	RunnableRequest ( Vector<Float> _averagevector ){
 		this.averagevector = _averagevector;
 	}
@@ -53,30 +58,29 @@ public class RunnableRequest implements Runnable  {
 			Socket TCP_socket = new Socket( SysValues.url, SysValues.port );
 			TCP_socket.setSoTimeout(10000);
 
-			PrintWriter pw = new PrintWriter ( TCP_socket.getOutputStream() );
+			PrintWriter pw = new PrintWriter ( TCP_socket.getOutputStream(), true );
 			
 			pw.println("{\"put\":true, \"key\":\"" + SysValues.key + "\", value:\"" + SysValues.value + "\"}");
-			
-			// TODO: make a function for GET
-			//			pw.println("{\"get\":true, \"key\":\"cats\"}");
-			
-
-			// TODO: make a function for REMOVE
-			// 			pw.println("{\"remove\":true, \"key\":\"cats\"}");
-			
-			pw.flush();
 
 			BufferedReader br = new BufferedReader( new InputStreamReader( TCP_socket.getInputStream() ) );
 
-			br.readLine(); //Can print or return this response as necessary
+			String response = br.readLine(); // Can print or return the response as necessary
 
 			TCP_socket.close();
 			return true;
+			
 		} catch (IOException e) {
-			// Socket failure or timeout
-			return false;
+			return false; // Socket failure or timeout
 		}
 	}
 	
+	
+	// TODO: make a function for GET
+	//			pw.println("{\"get\":true, \"key\":\"cats\"}");
+				
+
+	// TODO: make a function for REMOVE
+	// 			pw.println("{\"remove\":true, \"key\":\"cats\"}");
+				
 	
 }
