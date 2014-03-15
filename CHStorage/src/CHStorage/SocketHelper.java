@@ -168,7 +168,7 @@ public class SocketHelper {
 			return s;
 			
 		} catch (IOException | InterruptedException e) { // TODO:: ????
-			broadcast( "READ ERROR: " + e.getLocalizedMessage());
+			//broadcast( "READ ERROR: " + e.getLocalizedMessage());
 			//e.printStackTrace();
 			return null; // connection closed?
 		}
