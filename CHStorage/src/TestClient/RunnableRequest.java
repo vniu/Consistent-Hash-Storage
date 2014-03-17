@@ -28,7 +28,7 @@ public class RunnableRequest implements Runnable  {
 			// For each test, take initial time, then make the request
 			long startTime = System.currentTimeMillis();
 			
-			if ( makePutRequest() ){
+			if ( makeRandomRequest() ){
 				// If the request was successful, add to the sum the amount of time it took for us to get our response
 				long endTime = System.currentTimeMillis();
 				sum = sum + (endTime - startTime);
@@ -47,25 +47,44 @@ public class RunnableRequest implements Runnable  {
 		averagevector.add(average);
 	}
 	
+	boolean makeRandomRequest(){
+		int req = (int) Math.floor( Math.random() * 3 );
+		
+		switch (req){
+		case 0:
+			//System.out.println("Making put");
+			return makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + "\", value:\"" + SysValues.value + "\"}" );
+		case 1:
+			//System.out.println("Making get");
+			return makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + "\"}" );
+		default:
+			//System.out.println("Making remove");
+			return makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + "\"}" );
+		}
+	}
+	
 	
 	/**
-	 * 		Does a simple put request to the defined server with the defined value.
+	 * 		Does a simple request to the defined server with the defined string request.
 	 * 
-	 * @return	True if successful, false if not.
+	 * @param request 	The JSON request.
+	 * @return			True if successful, false if not.
 	 */
-	static boolean makePutRequest(){
+	static boolean makeRequest( String request ){
 		try {
 			Socket TCP_socket = new Socket( SysValues.url, SysValues.port );
 			TCP_socket.setSoTimeout(10000);
 
 			PrintWriter pw = new PrintWriter ( TCP_socket.getOutputStream(), true );
 			
-			pw.println("{\"put\":true, \"key\":\"" + SysValues.key + "\", value:\"" + SysValues.value + "\"}");
+			pw.println( request );
 
 			BufferedReader br = new BufferedReader( new InputStreamReader( TCP_socket.getInputStream() ) );
 
-			String response = br.readLine(); // Can print or return the response as necessary
+			String response = br.readLine(); // Can print or perhaps change to return the response as necessary
 
+			System.out.println( response );
+			
 			TCP_socket.close();
 			return true;
 			
@@ -73,14 +92,5 @@ public class RunnableRequest implements Runnable  {
 			return false; // Socket failure or timeout
 		}
 	}
-	
-	
-	// TODO: make a function for GET
-	//			pw.println("{\"get\":true, \"key\":\"cats\"}");
-				
-
-	// TODO: make a function for REMOVE
-	// 			pw.println("{\"remove\":true, \"key\":\"cats\"}");
-				
 	
 }
