@@ -9,6 +9,7 @@ import java.util.Vector;
 
 public class RunnableRequest implements Runnable  {
 	private Vector<Float> averagevector;
+	int reqnum = 0;
 	
 	/**
 	 * 		Constructor
@@ -28,8 +29,11 @@ public class RunnableRequest implements Runnable  {
 			// For each test, take initial time, then make the request
 			long startTime = System.currentTimeMillis();
 			
-			if ( makeRandomRequest() ){
-				// If the request was successful, add to the sum the amount of time it took for us to get our response
+			if ( makeSequentialRequest() 
+			//if ( makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + "\", value:\"" + SysValues.value + "\"}" )
+			//if ( makeRandomRequest() 
+				){
+			// If the request was successful, add to the sum the amount of time it took for us to get our response
 				long endTime = System.currentTimeMillis();
 				sum = sum + (endTime - startTime);
 			}else{
@@ -47,6 +51,36 @@ public class RunnableRequest implements Runnable  {
 		averagevector.add(average);
 	}
 	
+	
+	/**
+	 * 		Will cycle put get and remove depending on last call.
+	 * 		Appends thread id to the key, to ensure other threads don't use the same key.
+	 * 
+	 * @return			True if successful, false if not.
+	 */
+	boolean makeSequentialRequest(){
+		
+		switch( reqnum ){
+		case 0:
+			reqnum ++;
+			if (reqnum > 2) reqnum = 0;
+			return makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + Thread.currentThread().getId() + "\", value:\"" + SysValues.value + "\"}" );
+		case 1:
+			reqnum ++;
+			if (reqnum > 2) reqnum = 0;
+			return makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + Thread.currentThread().getId() + "\"}" );
+		default:
+			reqnum ++;
+			if (reqnum > 2) reqnum = 0;
+			return makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + Thread.currentThread().getId() + "\"}" );
+		}		
+	}
+	
+	/**
+	 * 	A random request
+	 * 
+	 * @return			True if successful, false if not.
+	 */
 	boolean makeRandomRequest(){
 		int req = (int) Math.floor( Math.random() * 3 );
 		
@@ -83,7 +117,7 @@ public class RunnableRequest implements Runnable  {
 
 			String response = br.readLine(); // Can print or perhaps change to return the response as necessary
 
-			System.out.println( response );
+			//System.out.println( response );
 			
 			TCP_socket.close();
 			return true;
