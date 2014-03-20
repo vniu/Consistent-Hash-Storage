@@ -3,7 +3,7 @@ package TestClient;
 public class SysValues {
 	//TODO load from text file?
 	
-	final static int threadcount = 30;
+	final static int threadcount = 20;
 	final static int tests_per_thread = 100;
 	//final static String url = "planetlab04.cs.washington.edu";
 	//final static String url = "planetlab2.cs.ubc.ca";

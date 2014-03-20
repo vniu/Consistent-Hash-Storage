@@ -21,6 +21,8 @@ public class SocketHelper {
 	private InputStream TCP_socket_is;
 	private PrintWriter pw;
 	
+	public String myURL;
+	
 	/**
 	 * 		Default construction...
 	 */
@@ -56,23 +58,29 @@ public class SocketHelper {
 	 * 
 	 * @param server 	The server to connect to.
 	 * @param port 		The port to connect on.
-	 * @return 			0 if successful, 1 if connection was REFUSED, 2 if there was an unknown host or io exception.
+	 * @return 			0 if successful, 1 if connection was REFUSED, 2 if TIMED OUT, 3 otherwise
 	 */
 	public int CreateConnection( String server, int port ){
+		this.myURL = server;
+		
 		try{
 			this.TCP_socket = new Socket(server, port);
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
+			
 			this.TCP_socket.setSoTimeout(SysValues.listentimeout*1000);
 			this.pw = new PrintWriter(TCP_socket_os);
 		} catch (UnknownHostException e) {
 			broadcast("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
 			return 2;
 		} catch (IOException e) {
-			if (e.getLocalizedMessage().equals("Connection refused") )
+			broadcast(server + " : " + e.getLocalizedMessage() );
+			if ( e.getLocalizedMessage().equals("Connection refused") ){
 				return 1;
-			broadcast("NOTICE:" + e.getLocalizedMessage() + ", IO E on socket creation.\n" );
-			return 2;
+			}else if ( e.getLocalizedMessage().equals("Connection timed out") ){
+				return 2;
+			}else
+				return 3;
 		}
 		return 0;
 	}

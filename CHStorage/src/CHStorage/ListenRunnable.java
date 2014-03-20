@@ -57,7 +57,8 @@ public class ListenRunnable implements Runnable {
 				// A JSON object comes from another node, or a user typing it as a string
 				JSONObject j = new JSONObject(message);
 				
-				broadcast( "Got: " + message );
+				if ( SysValues.ShowValues ) 
+					broadcast( "Got: " + message );
 				
 				if (j.has("stop")){
 					this.seppuku("Stop");
@@ -82,7 +83,8 @@ public class ListenRunnable implements Runnable {
 					JSONObject command = new JSONObject();
 
 					bb = ByteBuffer.wrap( message.getBytes("ISO-8859-1") );
-					broadcast("Got in hex: " + DatatypeConverter.printHexBinary(message.getBytes("ISO-8859-1")));
+					if ( SysValues.ShowValues ) 
+						broadcast("Got in hex: " + DatatypeConverter.printHexBinary(message.getBytes("ISO-8859-1")));
 					
 					// get the command - 1 byte
 					byte firstbyte = bb.get();

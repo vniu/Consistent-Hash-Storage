@@ -6,6 +6,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -40,6 +42,13 @@ public class Initiator {
 		NodeMaster NM;
 		
 		try {
+			InetAddress iAddress = InetAddress.getLocalHost();
+
+	        System.out.println("Host Name:" + iAddress.getHostName() );
+	        System.out.println("Canonical Host Name:" + iAddress.getCanonicalHostName() );
+		} catch (UnknownHostException e) {}
+		
+		try {
 			// Build our server list out of the .txt file
 			File file = new File( SysValues.serverfilename );
 			FileInputStream fis = new FileInputStream(file);
@@ -63,6 +72,9 @@ public class Initiator {
 			Thread internalServer = new Thread( new ServerRunnable( NM, SysValues.internalport, SysValues.maxinternalconnections ) );
 			internalServer.start(); // Another server to accept other node connections, i.e. internal connections
 
+			Thread statusServer = new Thread( new ServerRunnable( NM, SysValues.statusport, 1 ) );
+			statusServer.start(); // Another server for status updates
+			
 		}catch (JSONException | IOException e) {
 			System.out.println("Error: Check " + SysValues.serverfilename +  ". Exiting: " + e.getLocalizedMessage());
 			return;

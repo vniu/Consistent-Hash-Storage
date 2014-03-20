@@ -15,9 +15,14 @@ import org.json.JSONObject;
  *		Responsible for deciphering and executing commands.
  */
 public class NodeMaster {
-	private JSONArray servers; 
+	public  JSONArray servers; 
 	private JSONObject storage;
+	public Vector<String> dead_servers;
+	public Vector<String> to_test;
+	public JSONObject gracelist;
+	
 	private int storagecount = 0;
+	Thread NodeStatus;
 
 	/**
 	 * 		Constructor - a new NodeMaster object based on the server text file.
@@ -28,6 +33,12 @@ public class NodeMaster {
 	public NodeMaster( JSONObject serverlist ) throws JSONException {
 		servers = serverlist.getJSONArray("servers");
 		storage = new JSONObject();
+		dead_servers = new Vector<String>();
+		//to_test= new HashSet<String>();
+		to_test = new Vector<String>();
+		gracelist = new JSONObject();
+		NodeStatus = new Thread ( new NodeStatusRunnable(dead_servers, to_test, this) );
+		NodeStatus.start();
 	}
 
 	private static void broadcast ( String m ) {
@@ -65,6 +76,9 @@ public class NodeMaster {
 			SysValues.shutdown = true;
 			return craftResponse(0);
 
+		}else if( j.has("status") ){
+			return craftResponse(200);
+			
 		}else if ( j.has("internal") == false ){
 			// Externalize the command
 			return this.sendmessageremote( j );
@@ -165,7 +179,7 @@ public class NodeMaster {
 	 * @param key	The value to get the resulting location from.
 	 * @return		A consistent location between 0 and servers.length() based on the key.
 	 */
-	public int mapto( String key ){
+	static public int mapto( String key, JSONArray _servers ){
 		byte[] hash = null;
 
 		try {
@@ -176,7 +190,7 @@ public class NodeMaster {
 		}
 		ByteBuffer bb = ByteBuffer.wrap(hash);
 		int loc = bb.getInt();
-		loc = Math.abs( loc % this.servers.length() );
+		loc = Math.abs( loc % _servers.length() );
 		return loc;
 	}
 
@@ -200,7 +214,7 @@ public class NodeMaster {
 			JSONObject response = new JSONObject();
 			
 			try {
-				location = mapto ( j.getString("key") );
+				location = NodeMaster.mapto ( j.getString("key"), this.servers );
 				url = this.servers.getString(location);
 				j.put("internal", true);
 			} catch (JSONException e) {
@@ -208,166 +222,107 @@ public class NodeMaster {
 				return craftResponse(5);
 			}
 			
+			while ( this.dead_servers.contains( url ) ){
+				location++;
+				if ( location == servers.length() ) // Ensure we loop around the servers properly
+					location = 0;
+				try {
+					url = this.servers.getString(location);
+					continue;
+				} catch (JSONException e1) {
+					broadcast("Couldn't map to a location?");
+					return craftResponse(5);
+				}
+			}
+			
 			while (true){
 				response = __DEPRECIATED__sendMessageTo ( j, url );
 			
 				try {
 					if ( response.getInt("ErrorCode") == 23 ){
+						this.addTestURLs ( url );
 						throw new JSONException("Node connect fail");
 					}else{
+						this.addToGracelist(url);
 						return response;
 					}
 				} catch (JSONException e) {
 				// Node CONNECTION was a failure, go to next node.
-					location++;
-					if ( location == servers.length() ) // Ensure we loop around the servers properly
-						location = 0;
-					try {
-						url = this.servers.getString(location);
-						continue;
-					} catch (JSONException e1) {
-						broadcast("Couldn't map to a location?");
-						return craftResponse(5);
+					while ( this.dead_servers.contains( url ) ){
+						location++;
+						if ( location == servers.length() ) // Ensure we loop around the servers properly
+							location = 0;
+						try {
+							url = this.servers.getString(location);
+							continue;
+						} catch (JSONException e1) {
+							broadcast("Couldn't map to a location?");
+							return craftResponse(5);
+						}
 					}
+					
 				}
 			}
-		}
+		}// End failover only
 
-		// This is for redundancy in values:
+		//Thread red = new Thread( new RedundancyRunnable(agreed_response, j, this) );
+		//red.start();
 		
-		// A vector to hold redundant responses
-		Vector<JSONObject> responses = new Vector<JSONObject>();
-
-		// An array of all current ErrorCodes from the responses: Should be populated with -1 if no response yet.
-		int[] responsecodes = new int[SysValues.redundancylevel];
-
-		// An array of socket connections (using the helper)
-		Vector<SocketHelper> shs = new Vector<SocketHelper>();
-
+		//int timer = 0;
+		//while ( agreed_response.size() == 0 ){
+		//	try {
+		//		Thread.sleep(1);
+		//	} catch (InterruptedException e) {}
+		//	
+		//	timer++;
+		//	if ( timer > SysValues.listentimeout*1000 )
+		//		return craftResponse(3);
+		//}
+		//return agreed_response.firstElement();
+		
+		Vector<JSONObject> agreed_response = new Vector<JSONObject>();
+		RedundancyRunnable RR = new RedundancyRunnable( agreed_response, j, this );
+		RR.execute();
+		if (agreed_response.size() == 0 ) return craftResponse(3);
+		return agreed_response.firstElement();
+		
+	}
+	
+	public synchronized void addTestURLs( Vector<SocketHelper> shs_to_add ){
+		Iterator<SocketHelper> iter = shs_to_add.iterator();
+		while ( iter.hasNext() ){
+			this.to_test.add( iter.next().myURL );
+		}
+	}
+	public synchronized void addTestURLs( SocketHelper sh_to_add ){
+		this.to_test.add(sh_to_add.myURL );
+	}
+	public synchronized void addTestURLs( String url ){
+		this.to_test.add( url );
+	}
+	
+	public synchronized void addToGracelist( String url ){
 		try {
-			j.put("internal", true); 					// Notify of internal connection or else we get recursion
-			location = mapto ( j.getString("key") );	// Get the initial location
-
-			// Initialize the connection across n redundant locations
-			for ( int i = 0; i < SysValues.redundancylevel; i++){
-
-				responsecodes[i] = -1; // As per convention, initialize response code to -1
-
-				if ( location == servers.length() ) // Ensure we loop around the servers properly
-					location = 0;
-
-				String redundanturl;
-				redundanturl = this.servers.getString(location); // Get the current url
-
-				SocketHelper sh = new SocketHelper();			
-				sh.CreateConnection(redundanturl, SysValues.internalport); // Make an internal connection to the url
-				sh.SendMessage( j.toString() );	// Send the url the command message
-				shs.add( sh );	// Add to the vector of connections for when we check for responses
-
-				location++;		// Continue to the next location on the server list
-			}
-
-		} catch (JSONException e) {		// If we get here then the response is bad
-			broadcast("Couldn't map to a location? Did not include key?");
-			return craftResponse(5);
-		}
-
-		// Initial states of null/zero 
-		JSONObject agreed_response = null;
-		Boolean have_agreement = false;
-		int responsecount = 0;
-
-		double starttime = System.currentTimeMillis();
-
-		while ( !have_agreement ){
-
-			// If we are running out of time, we should just return the best response that we have
-			if ( (System.currentTimeMillis() - starttime) > SysValues.listentimeout*1000/2){ // TODO: Possibly change this from half the response time to something better
-				broadcast("TIMEOUT ON REDUNDANCY.");
-
-				if ( mode(responsecodes)[1] == 0 ) { // Not good, max count is zero...
-					// Looks like we couldn't store it..
-					return craftResponse(4);
-				}
-				//just return the current mode.
-				return responses.elementAt(mode(responsecodes)[0]);
-			}
-
-			// Iterate over all the socket connections in the vector
-			Iterator<SocketHelper> iter = shs.iterator();
-			while( iter.hasNext() ){
-				SocketHelper working_sh = iter.next();
-				String str = working_sh.ReceiveMessage(0); // Check immediately, without waiting, for a message, and if its null just move on
-				if ( str == null ) continue;
-
-				try {	
-					JSONObject resp = new JSONObject( str );	// Have a response from this connection
-
-					working_sh.SendMessage("{\"stop\":true}");
-					working_sh.CloseConnection();
-					iter.remove();				// Close and remove the connection from the vector, don't need it anymore
-
-					responses.add(resp);
-					responsecodes[responsecount] = resp.getInt("ErrorCode");
-					responsecount++;		// Add to our information the response and code
-
-					// Check for a valid agreement -- m values (a mode) of the n redundant servers must agree
-
-					if ( mode(responsecodes)[1] >= SysValues.mofnredundant ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){  <-- Old way, where m is defined as 'half'
-
-						agreed_response = resp; // If the mode just became acceptable, the latest response must be part of the mode
-						have_agreement = true;
-						break;
-					}
-
-				} catch (JSONException e) { // Error with the response? Just move on.
-					continue;
-				}
-			}
-		}
-
-		// We have enough responses
-		broadcast("Using " + mode(responsecodes)[1] + " of " + responses.size() + " responses.");
-
-		// Tell anyone left (has not been removed from the vector) that we no longer need their input, and close the connections
-		Iterator<SocketHelper> cleanup_iter = shs.iterator();
-		while( cleanup_iter.hasNext() ){
-			SocketHelper working_sh = cleanup_iter.next();
-			working_sh.SendMessage("{\"stop\":true}");
-			working_sh.CloseConnection();
-			cleanup_iter.remove();
-		}
-
-		return agreed_response;
+			this.gracelist.put(url, System.currentTimeMillis() );
+		} catch (JSONException e) {}
 	}
-
-	/**
-	 * 		Calculate the mode and a location of a mode. Will ignore values of -1 as per convention.
-	 * 
-	 * @param inarray	The input array to check.
-	 * @return			Returns two ints, [0] being the Location of a mode, and [1] being the count of the mode.
-	 */
-	public static int[] mode(int inarray[]) {
-		//int maxValue = -1;
-		int maxCount = 0;
-		int maxLocation = -1;
-
-		for (int i = 0; i < inarray.length; i++) {
-			int count = 0;
-			for (int j = 0; j < inarray.length; j++) {
-				if (inarray[i] == -1){
-					// ignore -1
-				}else if (inarray[i] == inarray[j]) count++;
-			}
-			if (count > maxCount) {
-				maxCount = count;
-				// maxValue = a[i];
-				maxLocation = i;
-			}
-		}
-
-		return new int[]{maxLocation, maxCount};
+	
+	public synchronized void removeFromGracelist( String url ){
+		this.gracelist.remove(url);
 	}
+	
+	public synchronized Boolean hasGracelist( String url ){
+		return this.gracelist.has(url);
+	}
+	
+	public synchronized long getGracelistLong( String url ){
+		try {
+			return this.gracelist.getLong(url);
+		} catch (JSONException e) {
+			return 0;
+		}
+	}
+	
 
 	/**
 	 * 		Depreciated with new redundancy functionality.
@@ -414,7 +369,7 @@ public class NodeMaster {
 	 * @param ErrorCode	The (int) error code to be placed under the key "ErrorCode"
 	 * @return			The newly formed object
 	 */
-	JSONObject craftResponse ( int ErrorCode ){
+	static JSONObject craftResponse ( int ErrorCode ){
 		JSONObject response = new JSONObject();
 		try {
 			response.put("ErrorCode", ErrorCode);
@@ -437,6 +392,10 @@ public class NodeMaster {
 				break;
 			case 5:
 				response.put("ErrorInfo", "Unrecognized or malformed command.");
+				break;
+			case 200:
+				response.put("ErrorInfo", "OK");
+				response.put("status", "OK");
 				break;
 			default:
 				response.put("ErrorInfo", "Unknown Error.");

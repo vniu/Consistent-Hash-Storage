@@ -115,7 +115,8 @@ public class RunnableRequest implements Runnable  {
 
 			BufferedReader br = new BufferedReader( new InputStreamReader( TCP_socket.getInputStream() ) );
 
-			String response = br.readLine(); // Can print or perhaps change to return the response as necessary
+			//String response = 
+			br.readLine(); // Can print or perhaps change to return the response as necessary
 
 			//System.out.println( response );
 			
@@ -123,6 +124,7 @@ public class RunnableRequest implements Runnable  {
 			return true;
 			
 		} catch (IOException e) {
+			System.out.println( "Failure! " + e.getLocalizedMessage() );
 			return false; // Socket failure or timeout
 		}
 	}
