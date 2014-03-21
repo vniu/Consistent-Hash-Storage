@@ -59,6 +59,15 @@ public class ServerRunnable implements Runnable {
 				broadcast("Bad client connection, ignoring: " + clientSocket.getInetAddress().toString());
 				continue;
 			}
+			
+			if ( SysValues.shutdown ){
+				try {
+					clientSocket.close();
+					serverSocket.close();
+				} catch (IOException e) {}
+				return;
+			}
+			
 			broadcast ( "Got connection from: " + clientSocket.getInetAddress().toString() );
 			
 			int timer = 0;

@@ -87,13 +87,35 @@ public class Initiator {
 						new FileOutputStream( SysValues.outputfilename ), "ISO-8859-1"));
 
 				// Write node's storage data to text file for external viewing
-				writer.write( NM.getStorageString() );
+				writer.write( 
+								"Dead Servers: \n" +
+								NM.dead_servers.toString() + 
+								"\n\n\n" +
+								"Local Key Value pairs: \n" + 
+								NM.getStorageString()
+								
+							);
 				writer.close();
 
 			} catch (IOException | InterruptedException ex) {
 				System.out.println("Couldn't write to file.");
 			}
 		}
+		
+		try {
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+					new FileOutputStream( SysValues.outputfilename ), "ISO-8859-1"));
+
+			writer.write(
+							"I'm dead!"
+						);
+			writer.close();
+
+		} catch (IOException ex) {
+			System.out.println("Couldn't write to file.");
+		}
+		
+		
 		System.out.println("Shutdown.");
 
 	}

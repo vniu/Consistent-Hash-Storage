@@ -24,14 +24,21 @@ public class NodeStatusRunnable implements Runnable {
 
 	@Override
 	public void run() {
+		int tempcount = 0;
 		
 		while (SysValues.shutdown == false ){
 			
 			// Check every second for now TODO: change!
 			try {
 				Thread.sleep(1000);
+				tempcount++;
 			} catch (InterruptedException e) {}
 
+			if ( tempcount > 10 ){ // TODO: hardcoded 10 seconds
+				tempcount = 0;
+				this.attemptRepair();
+			}
+			
 			potentially_dead.addAll(to_test);
 			to_test.clear();
 
@@ -91,6 +98,38 @@ public class NodeStatusRunnable implements Runnable {
 		// If we get here --  Must have just been slow?
 		this.nodemaster.addToGracelist(url);
 		broadcast("Adding " + url + " to grace list.");
+		
+	}
+	
+	
+	public void attemptRepair(){
+		Iterator<String> iter = this.dead_servers.iterator();
+		
+		while ( iter.hasNext() ){
+			String url = iter.next();
+			
+			SocketHelper check = new SocketHelper ( );
+
+			if ( check.CreateConnection( url, SysValues.statusport ) != 0){
+				// Still likely dead
+				check.CloseConnection();
+				return;
+			}
+			
+			check.SendMessage("{\"status\":true}");
+			String finalstr = check.ReceiveMessage(SysValues.listentimeout );
+			if ( finalstr == null ){
+				// Still likely dead
+				return;
+			}
+			check.CloseConnection();
+
+			
+			// If we get here -- they responded to our "ping". They are likely alive again.
+			this.dead_servers.remove(url);
+			this.nodemaster.addToGracelist(url);
+			broadcast("Adding " + url + " to grace list as per Repair.");
+		}
 		
 	}
 }

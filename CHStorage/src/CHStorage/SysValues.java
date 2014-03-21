@@ -10,9 +10,9 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static int maxinternalconnections = 125;	// Limit to n internal connections at a time.
 															/*
 															 *  Max internal should be equal to client*redundancylevel.
-															 *  This is due to the logic that over n nodes, 1/n of the keys will map to our node. 
-															 *  If each node is fully engaged, then n nodes will provide
-															 *  (redundancylevel)/n clients each, and thus should be a 1:1 ratio with the max clients of a node.
+															 *  This is due to the logic that over (n) nodes, 1/(n) of the keys will map to our node. 
+															 *  If each node is fully engaged, then (n) nodes will provide
+															 *  (redundancylevel)/(n) clients each, and thus should be a (redundancylevel):1 ratio with the max clients of a node.
 															 */
 						
 	public final static int listentimeout = 5; 				// Allow a client connection to remain open for n seconds from last message.
@@ -28,7 +28,7 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	
 	
 	public final static String serverfilename = "servers.txt";
-	public final static String outputfilename = "kv.txt";
+	public final static String outputfilename = "index.html";
 	
 	
 	//Debug options

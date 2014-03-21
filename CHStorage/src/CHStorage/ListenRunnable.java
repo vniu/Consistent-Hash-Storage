@@ -42,7 +42,7 @@ public class ListenRunnable implements Runnable {
 
 	@Override
 	public void run() {
-		while ( running ){
+		while ( running && SysValues.shutdown == false ){
 			long starttime = System.currentTimeMillis();
 			String message = sh.ReceiveMessage( SysValues.listentimeout );
 			

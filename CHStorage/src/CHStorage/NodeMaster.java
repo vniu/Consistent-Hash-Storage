@@ -54,7 +54,7 @@ public class NodeMaster {
 	 */
 	public synchronized String getStorageString(){
 		try {
-			return this.storage.toString(2);
+			return this.storage.toString(5);
 		} catch (JSONException e) {
 			return "";
 		}
