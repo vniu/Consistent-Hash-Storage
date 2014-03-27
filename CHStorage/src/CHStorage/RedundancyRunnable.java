@@ -7,7 +7,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class RedundancyRunnable { //implements Runnable {
-	private int location = 0;
 	private Vector<JSONObject> responses;	// A vector to hold redundant responses
 	private int[] responsecodes;		// An array of all current ErrorCodes from the responses: Should be populated with -1 if no response yet.
 	private Vector<SocketHelper> shs;	// An array of socket connections (using the helper)
@@ -45,6 +44,8 @@ public class RedundancyRunnable { //implements Runnable {
 		String ID = Long.toString( Thread.currentThread().getId() ); 
 		System.out.println( "RedundancyThread(" + ID + ")> " + m );
 	}
+	
+	
 
 	//@Override
 	//public void run() {
@@ -53,40 +54,55 @@ public class RedundancyRunnable { //implements Runnable {
 
 		try {
 			this.message.put("internal", true); 	// Notify of internal connection or else we get recursion
-			location = NodeMaster.mapto ( this.message.getString("key"), nodemaster.servers );	// Get the initial location via Consistent Hashing
 
 			// Initialize the connection across n redundant locations
 			for ( int i = 0; i < SysValues.redundancylevel; i++){
 
 				responsecodes[i] = -1; // As per convention, initialize response code to -1
 
-				String redundanturl;
-				redundanturl = nodemaster.servers.getString(location); // Get the current url
-
+				int location = NodeMaster.mapto ( this.message.getString("key"), nodemaster.servers );	// Get the initial location via Consistent Hashing
+				
+				//increment location based off which redundancy we are
+				location = incrementLocBy( location, i );
+				String redundanturl = nodemaster.servers.getString(location); // Get the current url
+				//Let it be known the intended location of this info
+				message.put("intended_location", redundanturl);
+				
 				// Check against the dead servers for the current url -> if it is dead, skip it.
-				while ( nodemaster.dead_servers.contains( redundanturl ) ){
+				int increments = 0;
+				while ( nodemaster.gracelist.dead_servers.contains( redundanturl ) ){
 					broadcast("Skipping dead URL: " + redundanturl );
-					location++;
-					if ( location == nodemaster.servers.length() ) // Ensure we loop around the servers properly
-						location = 0;
+					
+					location = incrementLocBy( location, SysValues.redundancylevel ); // increment to the next subset of size redundancylevel 
+					increments += SysValues.redundancylevel;
+					if ( increments >= nodemaster.servers.length() ){
+						// looped ALL the way around the nodes? uh oh
+						broadcast("SEVERE: Looped around nodes: losing a level of redundancy!");
+						// just put the intended location in
+						location = NodeMaster.mapto ( this.message.getString("key"), nodemaster.servers );
+						location = incrementLocBy( location, i );
+						break;
+					}
 					redundanturl = nodemaster.servers.getString(location);
 				}
 
 				SocketHelper sh = new SocketHelper();			
-				sh.CreateConnection(redundanturl, SysValues.internalport); // Make an internal connection to the url
-
-				message.put("R_Level", i);
+				int status = sh.CreateConnection(redundanturl, SysValues.internalport); // Make an internal connection to the url
+				if (status != 0){
+					// create connection fail!
+					broadcast( sh.myURL + "is DEAD! Connection Create fail.");
+					nodemaster.gracelist.dead_servers.add( sh.myURL );
+					sh.CloseConnection();
+					i--;
+					continue; // Try this iteration again with new dead server info
+				}
 
 				sh.SendMessage( this.message.toString() );	// Send the url the command message
 				shs.add( sh );	// Add to the vector of connections for when we check for responses
-
-				location++;		// Continue to the next location on the server list
-				if ( location == nodemaster.servers.length() ) // Ensure we loop around the servers properly
-					location = 0;
 			}
 
 		} catch (JSONException e) {		// If we get here then the response is bad
-			broadcast("Couldn't map to a location? Did not include key?");
+			broadcast("Couldn't map to a location? Did not include key? Redundancy Req.");
 			agreed_response.add( NodeMaster.craftResponse(5) );
 			return;
 		}
@@ -107,14 +123,12 @@ public class RedundancyRunnable { //implements Runnable {
 				if ( mode(responsecodes)[1] == 0 ) { // Not good, max count is zero...
 					// Looks like we couldn't store it.. //TODO:
 					agreed_response.add( NodeMaster.craftResponse(4) );
-					nodemaster.addTestURLs(shs);
-					cleanSockets( shs );
+					finalizeSockets( shs );
 					return;
 				}
 				//just return the current mode.
 				agreed_response.add( responses.elementAt(mode(responsecodes)[0]) );
-				nodemaster.addTestURLs(shs);
-				cleanSockets( shs );
+				finalizeSockets( shs );
 				return;
 			}
 
@@ -137,7 +151,7 @@ public class RedundancyRunnable { //implements Runnable {
 					responsecount++;		// Add to our information the response and code
 
 					// Add server that responded to the grace list
-					this.nodemaster.addToGracelist( working_sh.myURL );
+					nodemaster.gracelist.addToGraceList( working_sh.myURL );
 					
 					// Check for a valid agreement -- m values (a mode) of the n redundant servers must agree
 
@@ -157,18 +171,27 @@ public class RedundancyRunnable { //implements Runnable {
 		// We have enough responses
 		broadcast("Using " + mode(responsecodes)[1] + " of " + responses.size() + " responses.");
 		
-		nodemaster.addTestURLs(shs);
-		cleanSockets( shs );
+		finalizeSockets( shs );
 		return;
 	}
+	
+	public int incrementLocBy( int loc, int amount ){
+		for (int i = 0; i < amount; i++){
+			loc++;
+			if ( loc == nodemaster.servers.length() ) // Ensure we loop around the servers properly
+				loc = 0;
+		}
+		return loc;
+	}
 
-	/**
+	/** DEPRECIATED
 	 * 		Tell anyone left (has not been removed from the vector) 
 	 * 		that we no longer need their input, and close the connections.
 	 * 
 	 * @param shs	Sockets to clean.
 	 */
-	void cleanSockets( Vector<SocketHelper> shs ){
+	void DEPRECIATED_cleanSockets( Vector<SocketHelper> shs ){
+		//nodemaster.gracelist.addTestURLs(shs);
 
 		Iterator<SocketHelper> cleanup_iter = shs.iterator();
 		while( cleanup_iter.hasNext() ){
@@ -176,6 +199,32 @@ public class RedundancyRunnable { //implements Runnable {
 			working_sh.SendMessage("{\"stop\":true}");
 			working_sh.CloseConnection();
 			cleanup_iter.remove();
+		}
+	}
+	
+	void finalizeSockets( Vector<SocketHelper> shs ){
+		Iterator<SocketHelper> iter = shs.iterator();
+		
+		while ( iter.hasNext() ){
+			SocketHelper working_sh = iter.next();
+			
+			if ( 		nodemaster.gracelist.dead_servers.contains( working_sh.myURL )  // Already marked as dead
+					||	nodemaster.gracelist.to_test.contains( working_sh.myURL ) 	 ){ // Already marked for testing (could be dead)
+				
+				working_sh.SendMessage("{\"stop\":true}");
+				working_sh.CloseConnection();
+				iter.remove();
+				
+			}else{
+				// Do a full wait on the connection
+				String response = working_sh.ReceiveMessage(SysValues.listentimeout);
+				if ( response == null ){
+					nodemaster.gracelist.addTestURLs ( working_sh.myURL );
+				}// if response wasn't null, its still alive
+				working_sh.SendMessage("{\"stop\":true}");
+				working_sh.CloseConnection();
+				iter.remove();
+			}
 		}
 	}
 

@@ -89,7 +89,7 @@ public class Initiator {
 				// Write node's storage data to text file for external viewing
 				writer.write( 
 								"Dead Servers: \n" +
-								NM.dead_servers.toString() + 
+								NM.gracelist.dead_servers.toString() + 
 								"\n\n\n" +
 								"Local Key Value pairs: \n" + 
 								NM.getStorageString()

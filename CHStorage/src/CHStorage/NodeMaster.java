@@ -4,7 +4,6 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Iterator;
 import java.util.Vector;
 
 import org.json.JSONArray;
@@ -17,9 +16,8 @@ import org.json.JSONObject;
 public class NodeMaster {
 	public  JSONArray servers; 
 	private JSONObject storage;
-	public Vector<String> dead_servers;
-	public Vector<String> to_test;
-	public JSONObject gracelist;
+
+	public GraceList gracelist;
 	
 	private int storagecount = 0;
 	Thread NodeStatus;
@@ -33,11 +31,9 @@ public class NodeMaster {
 	public NodeMaster( JSONObject serverlist ) throws JSONException {
 		servers = serverlist.getJSONArray("servers");
 		storage = new JSONObject();
-		dead_servers = new Vector<String>();
 		//to_test= new HashSet<String>();
-		to_test = new Vector<String>();
-		gracelist = new JSONObject();
-		NodeStatus = new Thread ( new NodeStatusRunnable(dead_servers, to_test, this) );
+		gracelist = new GraceList();
+		NodeStatus = new Thread ( new NodeStatusRunnable( this ) );
 		NodeStatus.start();
 	}
 
@@ -222,7 +218,7 @@ public class NodeMaster {
 				return craftResponse(5);
 			}
 			
-			while ( this.dead_servers.contains( url ) ){
+			while ( gracelist.dead_servers.contains( url ) ){
 				location++;
 				if ( location == servers.length() ) // Ensure we loop around the servers properly
 					location = 0;
@@ -240,15 +236,15 @@ public class NodeMaster {
 			
 				try {
 					if ( response.getInt("ErrorCode") == 23 ){
-						this.addTestURLs ( url );
+						gracelist.addTestURLs ( url );
 						throw new JSONException("Node connect fail");
 					}else{
-						this.addToGracelist(url);
+						gracelist.addToGraceList(url);
 						return response;
 					}
 				} catch (JSONException e) {
 				// Node CONNECTION was a failure, go to next node.
-					while ( this.dead_servers.contains( url ) ){
+					while ( gracelist.dead_servers.contains( url ) ){
 						location++;
 						if ( location == servers.length() ) // Ensure we loop around the servers properly
 							location = 0;
@@ -288,40 +284,9 @@ public class NodeMaster {
 		
 	}
 	
-	public synchronized void addTestURLs( Vector<SocketHelper> shs_to_add ){
-		Iterator<SocketHelper> iter = shs_to_add.iterator();
-		while ( iter.hasNext() ){
-			this.to_test.add( iter.next().myURL );
-		}
-	}
-	public synchronized void addTestURLs( SocketHelper sh_to_add ){
-		this.to_test.add(sh_to_add.myURL );
-	}
-	public synchronized void addTestURLs( String url ){
-		this.to_test.add( url );
-	}
 	
-	public synchronized void addToGracelist( String url ){
-		try {
-			this.gracelist.put(url, System.currentTimeMillis() );
-		} catch (JSONException e) {}
-	}
 	
-	public synchronized void removeFromGracelist( String url ){
-		this.gracelist.remove(url);
-	}
 	
-	public synchronized Boolean hasGracelist( String url ){
-		return this.gracelist.has(url);
-	}
-	
-	public synchronized long getGracelistLong( String url ){
-		try {
-			return this.gracelist.getLong(url);
-		} catch (JSONException e) {
-			return 0;
-		}
-	}
 	
 
 	/**

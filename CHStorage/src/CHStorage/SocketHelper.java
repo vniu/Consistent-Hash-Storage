@@ -42,6 +42,8 @@ public class SocketHelper {
 			this.TCP_socket_is = TCP_socket.getInputStream();
 			this.TCP_socket.setSoTimeout(SysValues.listentimeout*1000);
 			this.pw = new PrintWriter(TCP_socket_os);
+			
+			this.myURL = "";
 		} catch (IOException e) {
 			//e.printStackTrace();	// invalid socket, shouldn't get here.
 		}

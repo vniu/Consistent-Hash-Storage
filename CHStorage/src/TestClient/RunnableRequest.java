@@ -29,7 +29,7 @@ public class RunnableRequest implements Runnable  {
 			// For each test, take initial time, then make the request
 			long startTime = System.currentTimeMillis();
 			
-			if ( makeSequentialRequest() 
+			if ( makeSequentialRequest( i ) 
 			//if ( makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + "\", value:\"" + SysValues.value + "\"}" )
 			//if ( makeRandomRequest() 
 				){
@@ -58,21 +58,21 @@ public class RunnableRequest implements Runnable  {
 	 * 
 	 * @return			True if successful, false if not.
 	 */
-	boolean makeSequentialRequest(){
+	boolean makeSequentialRequest( int i ){
 		
 		switch( reqnum ){
 		case 0:
 			reqnum ++;
 			if (reqnum > 2) reqnum = 0;
-			return makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + Thread.currentThread().getId() + "\", value:\"" + SysValues.value + "\"}" );
+			return makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + Integer.toString(i) + Thread.currentThread().getId() + "\", \"value\":\"" + SysValues.value + "\"}" );
 		case 1:
 			reqnum ++;
 			if (reqnum > 2) reqnum = 0;
-			return makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + Thread.currentThread().getId() + "\"}" );
+			return makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + Integer.toString(i-1) + Thread.currentThread().getId() + "\"}" );
 		default:
 			reqnum ++;
 			if (reqnum > 2) reqnum = 0;
-			return makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + Thread.currentThread().getId() + "\"}" );
+			return makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + Integer.toString(i-2) + Thread.currentThread().getId() + "\"}" );
 		}		
 	}
 	
@@ -115,10 +115,10 @@ public class RunnableRequest implements Runnable  {
 
 			BufferedReader br = new BufferedReader( new InputStreamReader( TCP_socket.getInputStream() ) );
 
-			//String response = 
+			String response = 
 			br.readLine(); // Can print or perhaps change to return the response as necessary
 
-			//System.out.println( response );
+			System.out.println( response );
 			
 			TCP_socket.close();
 			return true;
