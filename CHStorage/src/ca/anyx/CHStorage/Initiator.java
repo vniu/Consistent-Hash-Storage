@@ -92,7 +92,7 @@ public class Initiator {
 								NM.gracelist.dead_servers.toString() + 
 								"\n\n\n" +
 								"Local Key Value pairs: \n" + 
-								NM.getStorageString()
+								NM.my_storage.getStorageString()
 								
 							);
 				writer.close();

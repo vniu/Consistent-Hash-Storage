@@ -116,7 +116,7 @@ public class RedundancyRunnable { //implements Runnable {
 
 		} catch (JSONException e) {		// If we get here then the response is bad
 			broadcast("Couldn't map to a location? Did not include key? Redundancy Req.");
-			agreed_response.add( NodeMaster.craftResponse(5) );
+			agreed_response.add( DataStorage.craftResponse(5) );
 			return;
 		}
 
@@ -135,7 +135,7 @@ public class RedundancyRunnable { //implements Runnable {
 
 				if ( mode(responsecodes)[1] == 0 ) { // Not good, max count is zero...
 					// Looks like we couldn't store it.. //TODO:
-					agreed_response.add( NodeMaster.craftResponse(4) );
+					agreed_response.add( DataStorage.craftResponse(4) );
 					finalizeSockets( shs );
 					return;
 				}
