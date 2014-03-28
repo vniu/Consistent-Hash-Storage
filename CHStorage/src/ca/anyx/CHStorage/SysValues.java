@@ -1,4 +1,4 @@
-package CHStorage;
+package ca.anyx.CHStorage;
 
 public class SysValues {	//TODO: Change all these from hardcoded? Load from text file perhaps?
 	

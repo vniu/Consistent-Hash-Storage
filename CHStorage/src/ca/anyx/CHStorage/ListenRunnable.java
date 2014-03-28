@@ -1,4 +1,4 @@
-package CHStorage;
+package ca.anyx.CHStorage;
 
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;

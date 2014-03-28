@@ -1,4 +1,4 @@
-package CHStorage;
+package ca.anyx.CHStorage;
 
 import java.util.Iterator;
 import java.util.Vector;
