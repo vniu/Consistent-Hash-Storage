@@ -1,4 +1,4 @@
-package TestClient;
+package ca.anyx.TestClient;
 
 public class SysValues {
 	//TODO load from text file?

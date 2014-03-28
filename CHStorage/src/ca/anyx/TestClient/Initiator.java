@@ -1,4 +1,4 @@
-package TestClient;
+package ca.anyx.TestClient;
 
 import java.util.Iterator;
 import java.util.Vector;

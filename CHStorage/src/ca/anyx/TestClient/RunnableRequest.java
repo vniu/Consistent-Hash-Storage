@@ -1,4 +1,4 @@
-package TestClient;
+package ca.anyx.TestClient;
 
 import java.io.BufferedReader;
 import java.io.IOException;
