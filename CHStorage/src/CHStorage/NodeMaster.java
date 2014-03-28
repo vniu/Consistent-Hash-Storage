@@ -38,7 +38,7 @@ public class NodeMaster {
 	}
 
 	private static void broadcast ( String m ) {
-		if ( !SysValues.debug ) return;
+		if ( !SysValues.DEBUG ) return;
 
 		System.out.println( "NodeMaster> " + m );
 	}
@@ -103,7 +103,7 @@ public class NodeMaster {
 	public synchronized JSONObject putKV( JSONObject j ) {
 
 		try {
-			if ( storagecount >= SysValues.maxstorage )
+			if ( storagecount >= SysValues.MAX_STORAGE )
 				return craftResponse(2);
 
 			if ( this.storage.has( j.getString("key") ) ){
@@ -205,7 +205,7 @@ public class NodeMaster {
 
 		// This is the old way - no redundancy:
 
-		if ( SysValues.FailoverOnly ) {
+		if ( SysValues.FAILOVER_ONLY ) {
 			String url = null;
 			JSONObject response = new JSONObject();
 			
@@ -301,13 +301,13 @@ public class NodeMaster {
 	JSONObject __DEPRECIATED__sendMessageTo ( JSONObject j, String url ){
 		SocketHelper sh = new SocketHelper();
 
-		if ( sh.CreateConnection( url, SysValues.port ) != 0 ) {
+		if ( sh.CreateConnection( url, SysValues.CLIENT_PORT ) != 0 ) {
 			broadcast( "Response from external server failure (connection creation): " + url );
 			return craftResponse(23);	// node fail to connect
 		}
 
 		sh.SendMessage( j.toString() );
-		String recmessage = sh.ReceiveMessage(SysValues.listentimeout);
+		String recmessage = sh.ReceiveMessage(SysValues.LISTEN_TIMEOUT);
 
 		if( recmessage == null ){
 			broadcast( "Response from external server failure (null): " + url );

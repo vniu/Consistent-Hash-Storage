@@ -50,7 +50,7 @@ public class Initiator {
 		
 		try {
 			// Build our server list out of the .txt file
-			File file = new File( SysValues.serverfilename );
+			File file = new File( SysValues.SERVER_FILE_NAME );
 			FileInputStream fis = new FileInputStream(file);
 
 			StringBuilder sb = new StringBuilder();
@@ -66,25 +66,25 @@ public class Initiator {
 
 			NM = new NodeMaster( j );
 			
-			Thread clientServer = new Thread( new ServerRunnable( NM, SysValues.port, SysValues.maxclientconnections ) );
+			Thread clientServer = new Thread( new ServerRunnable( NM, SysValues.CLIENT_PORT, SysValues.MAX_CLIENT_CONNECTIONS ) );
 			clientServer.start(); // One server to accept incoming client connections
 			
-			Thread internalServer = new Thread( new ServerRunnable( NM, SysValues.internalport, SysValues.maxinternalconnections ) );
+			Thread internalServer = new Thread( new ServerRunnable( NM, SysValues.INTERNAL_PORT, SysValues.MAX_INTERNAL_CONNECTIONS ) );
 			internalServer.start(); // Another server to accept other node connections, i.e. internal connections
 
-			Thread statusServer = new Thread( new ServerRunnable( NM, SysValues.statusport, 1 ) );
+			Thread statusServer = new Thread( new ServerRunnable( NM, SysValues.STATUS_PORT, 1 ) );
 			statusServer.start(); // Another server for status updates
 			
 		}catch (JSONException | IOException e) {
-			System.out.println("Error: Check " + SysValues.serverfilename +  ". Exiting: " + e.getLocalizedMessage());
+			System.out.println("Error: Check " + SysValues.SERVER_FILE_NAME +  ". Exiting: " + e.getLocalizedMessage());
 			return;
 		}
 
 		while( SysValues.shutdown == false ){
 			try {
-				Thread.sleep( SysValues.fileIOtime * 1000 );
+				Thread.sleep( SysValues.FILE_IO_TIME * 1000 );
 				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-						new FileOutputStream( SysValues.outputfilename ), "ISO-8859-1"));
+						new FileOutputStream( SysValues.OUTPUT_FILE_NAME ), "ISO-8859-1"));
 
 				// Write node's storage data to text file for external viewing
 				writer.write( 
@@ -104,7 +104,7 @@ public class Initiator {
 		
 		try {
 			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-					new FileOutputStream( SysValues.outputfilename ), "ISO-8859-1"));
+					new FileOutputStream( SysValues.OUTPUT_FILE_NAME ), "ISO-8859-1"));
 
 			writer.write(
 							"I'm dead!"

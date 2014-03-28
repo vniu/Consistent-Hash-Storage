@@ -40,7 +40,7 @@ public class SocketHelper {
 			this.TCP_socket = TCP_socket;
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
-			this.TCP_socket.setSoTimeout(SysValues.listentimeout*1000);
+			this.TCP_socket.setSoTimeout(SysValues.LISTEN_TIMEOUT*1000);
 			this.pw = new PrintWriter(TCP_socket_os);
 			
 			this.myURL = "";
@@ -50,7 +50,7 @@ public class SocketHelper {
 	}
 	
 	public void broadcast( String s ){
-		if ( !SysValues.debug ) return;
+		if ( !SysValues.DEBUG ) return;
 
 		System.out.println( "SocketHelper> " + s );
 	}
@@ -70,7 +70,7 @@ public class SocketHelper {
 			this.TCP_socket_os = TCP_socket.getOutputStream();
 			this.TCP_socket_is = TCP_socket.getInputStream();
 			
-			this.TCP_socket.setSoTimeout(SysValues.listentimeout*1000);
+			this.TCP_socket.setSoTimeout(SysValues.LISTEN_TIMEOUT*1000);
 			this.pw = new PrintWriter(TCP_socket_os);
 		} catch (UnknownHostException e) {
 			broadcast("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");

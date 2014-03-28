@@ -29,7 +29,7 @@ public class RedundancyRunnable { //implements Runnable {
 	RedundancyRunnable( Vector<JSONObject> _agreed_response, JSONObject _message, NodeMaster nm ){
 		responses = new Vector<JSONObject>();
 
-		responsecodes = new int[SysValues.redundancylevel];
+		responsecodes = new int[SysValues.REDUNDANCY_LEVEL];
 		shs = new Vector<SocketHelper>();
 
 		this.agreed_response = _agreed_response;
@@ -39,7 +39,7 @@ public class RedundancyRunnable { //implements Runnable {
 	}
 
 	private void broadcast( String m ){
-		if ( !SysValues.debug ) return;
+		if ( !SysValues.DEBUG ) return;
 		// Add in thread ID so we can see who's who
 		String ID = Long.toString( Thread.currentThread().getId() ); 
 		System.out.println( "RedundancyThread(" + ID + ")> " + m );
@@ -53,10 +53,13 @@ public class RedundancyRunnable { //implements Runnable {
 		// This is for redundancy in values
 
 		try {
+			// Keep track of locations we send to -- if we try to send to the same location, we have lost a level of redundancy.
+			Vector<String> sentLocations = new Vector<String>();
+			
 			this.message.put("internal", true); 	// Notify of internal connection or else we get recursion
 
 			// Initialize the connection across n redundant locations
-			for ( int i = 0; i < SysValues.redundancylevel; i++){
+			for ( int i = 0; i < SysValues.REDUNDANCY_LEVEL; i++){
 
 				responsecodes[i] = -1; // As per convention, initialize response code to -1
 
@@ -73,8 +76,8 @@ public class RedundancyRunnable { //implements Runnable {
 				while ( nodemaster.gracelist.dead_servers.contains( redundanturl ) ){
 					broadcast("Skipping dead URL: " + redundanturl );
 					
-					location = incrementLocBy( location, SysValues.redundancylevel ); // increment to the next subset of size redundancylevel 
-					increments += SysValues.redundancylevel;
+					location = incrementLocBy( location, SysValues.REDUNDANCY_LEVEL ); // increment to the next subset of size redundancylevel 
+					increments += SysValues.REDUNDANCY_LEVEL;
 					if ( increments >= nodemaster.servers.length() ){
 						// looped ALL the way around the nodes? uh oh
 						broadcast("SEVERE: Looped around nodes: losing a level of redundancy!");
@@ -85,9 +88,18 @@ public class RedundancyRunnable { //implements Runnable {
 					}
 					redundanturl = nodemaster.servers.getString(location);
 				}
+				
+				// Already sent to the server on a previous iteration
+				if ( sentLocations.contains(redundanturl) ){
+					// In theory this should only happen if the server list is small -
+					// or, the amount of alive servers is less than the redundancy level,
+					// at which case it will try to be redundant multiple times per server.
+					broadcast("SEVERE: Attempted to send to the same location more than once: losing a level of redundancy!");
+					continue;
+				}
 
 				SocketHelper sh = new SocketHelper();			
-				int status = sh.CreateConnection(redundanturl, SysValues.internalport); // Make an internal connection to the url
+				int status = sh.CreateConnection(redundanturl, SysValues.INTERNAL_PORT); // Make an internal connection to the url
 				if (status != 0){
 					// create connection fail!
 					broadcast( sh.myURL + "is DEAD! Connection Create fail.");
@@ -99,6 +111,7 @@ public class RedundancyRunnable { //implements Runnable {
 
 				sh.SendMessage( this.message.toString() );	// Send the url the command message
 				shs.add( sh );	// Add to the vector of connections for when we check for responses
+				sentLocations.add(redundanturl);
 			}
 
 		} catch (JSONException e) {		// If we get here then the response is bad
@@ -117,7 +130,7 @@ public class RedundancyRunnable { //implements Runnable {
 		while ( !have_agreement ){
 
 			// If we are running out of time, we should just return the best response that we have
-			if ( (System.currentTimeMillis() - starttime) > SysValues.listentimeout*1000/2){ // TODO: Possibly change this from half the response time to something better
+			if ( (System.currentTimeMillis() - starttime) > SysValues.REDUNDANCY_TIMEOUT*1000){
 				broadcast("TIMEOUT ON REDUNDANCY.");
 
 				if ( mode(responsecodes)[1] == 0 ) { // Not good, max count is zero...
@@ -155,7 +168,7 @@ public class RedundancyRunnable { //implements Runnable {
 					
 					// Check for a valid agreement -- m values (a mode) of the n redundant servers must agree
 
-					if ( mode(responsecodes)[1] >= SysValues.mofnredundant ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){  <-- Old way, where m is defined as 'half'
+					if ( mode(responsecodes)[1] >= SysValues.MOFN_REDUNDANT ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){  <-- Old way, where m is defined as 'half'
 
 						agreed_response.add( resp ); // If the mode just became acceptable, the latest response must be part of the mode
 						have_agreement = true;
@@ -175,6 +188,16 @@ public class RedundancyRunnable { //implements Runnable {
 		return;
 	}
 	
+	/**
+	 * 		A quick helper to increment a location on the server list by an amount,
+	 * 		wrapping around to the beginning if necessary.
+	 * 		
+	 * 		Authors note: Could probably just do location + amount then modulus by the server length...
+	 * 
+	 * @param loc		The location to update
+	 * @param amount	How many times to increment the location by
+	 * @return			The updated location
+	 */
 	public int incrementLocBy( int loc, int amount ){
 		for (int i = 0; i < amount; i++){
 			loc++;
@@ -202,6 +225,12 @@ public class RedundancyRunnable { //implements Runnable {
 		}
 	}
 	
+	/**
+	 * 	WORK IN PROGRESS
+	 * 		Attempts to finalize connects that are open after an agreed response was reached.
+	 * 
+	 * @param shs	The open socket helpers.
+	 */
 	void finalizeSockets( Vector<SocketHelper> shs ){
 		Iterator<SocketHelper> iter = shs.iterator();
 		
@@ -211,15 +240,18 @@ public class RedundancyRunnable { //implements Runnable {
 			if ( 		nodemaster.gracelist.dead_servers.contains( working_sh.myURL )  // Already marked as dead
 					||	nodemaster.gracelist.to_test.contains( working_sh.myURL ) 	 ){ // Already marked for testing (could be dead)
 				
+				
+				// TODO: Need to replicate the data...
 				working_sh.SendMessage("{\"stop\":true}");
 				working_sh.CloseConnection();
 				iter.remove();
 				
 			}else{
 				// Do a full wait on the connection
-				String response = working_sh.ReceiveMessage(SysValues.listentimeout);
+				String response = working_sh.ReceiveMessage(SysValues.LISTEN_TIMEOUT);
 				if ( response == null ){
 					nodemaster.gracelist.addTestURLs ( working_sh.myURL );
+					// TODO: Need to replicate the data...
 				}// if response wasn't null, its still alive
 				working_sh.SendMessage("{\"stop\":true}");
 				working_sh.CloseConnection();

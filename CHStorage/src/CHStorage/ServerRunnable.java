@@ -32,7 +32,7 @@ public class ServerRunnable implements Runnable {
 	}
 
 	private void broadcast ( String m ){
-		if ( !SysValues.debug ) return;
+		if ( !SysValues.DEBUG ) return;
 		
 		System.out.println( "Server> " + m );
 	}
@@ -79,7 +79,7 @@ public class ServerRunnable implements Runnable {
 				
 				//TODO: Do something if stuck here for too long?
 				//		Also inform this new client that we can't help them?
-				if ( timer > SysValues.listentimeout*100 ){
+				if ( timer > SysValues.LISTEN_TIMEOUT*100 ){
 					broadcast("Server is overloaded.");
 					byte[] bytes = new byte[1];
 					bytes[0] = 3;	//Overloaded
@@ -91,7 +91,7 @@ public class ServerRunnable implements Runnable {
 				timer++;
 			}
 			
-			if (timer <= SysValues.listentimeout ){
+			if (timer <= SysValues.LISTEN_TIMEOUT ){
 				Thread client = new Thread( new ListenRunnable( clientSocket, NM ) );
 				
 				client.start();

@@ -34,7 +34,7 @@ public class ListenRunnable implements Runnable {
 	}
 
 	private void broadcast( String m ){
-		if ( !SysValues.debug ) return;
+		if ( !SysValues.DEBUG ) return;
 		// Add in thread ID so we can see who's who
 		String ID = Long.toString( Thread.currentThread().getId() ); 
 		System.out.println( "ServerThread(" + ID + ")> " + m );
@@ -44,7 +44,7 @@ public class ListenRunnable implements Runnable {
 	public void run() {
 		while ( running && SysValues.shutdown == false ){
 			long starttime = System.currentTimeMillis();
-			String message = sh.ReceiveMessage( SysValues.listentimeout );
+			String message = sh.ReceiveMessage( SysValues.LISTEN_TIMEOUT );
 			
 			long endtime = System.currentTimeMillis();
 			
@@ -57,7 +57,7 @@ public class ListenRunnable implements Runnable {
 				// A JSON object comes from another node, or a user typing it as a string
 				JSONObject j = new JSONObject(message);
 				
-				if ( SysValues.ShowValues ) 
+				if ( SysValues.SHOW_VALUES ) 
 					broadcast( "Got: " + message );
 				
 				if (j.has("stop")){
@@ -65,14 +65,14 @@ public class ListenRunnable implements Runnable {
 					return;
 				}
 				
-				if (SysValues.InternalOnly) j.put("internal", true);
+				if (SysValues.INTERNAL_ONLY) j.put("internal", true);
 				
 				JSONObject response = NM.keycommand( j ); // Send the response into the system
 				
 				broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
 				sh.SendMessage( response.toString() );
 				
-				if (SysValues.ForceStop) this.seppuku("ForceStop");
+				if (SysValues.FORCE_STOP) this.seppuku("ForceStop");
 				continue;
 
 			} catch (JSONException e) {
@@ -83,7 +83,7 @@ public class ListenRunnable implements Runnable {
 					JSONObject command = new JSONObject();
 
 					bb = ByteBuffer.wrap( message.getBytes("ISO-8859-1") );
-					if ( SysValues.ShowValues ) 
+					if ( SysValues.SHOW_VALUES ) 
 						broadcast("Got in hex: " + DatatypeConverter.printHexBinary(message.getBytes("ISO-8859-1")));
 					
 					// get the command - 1 byte
@@ -121,11 +121,11 @@ public class ListenRunnable implements Runnable {
 						byte[] bytes = new byte[1];
 						bytes[0] = 5;	//Tell the user its an invalid command
 						sh.SendBytes(bytes);
-						if (SysValues.ForceStop) this.seppuku("ForceStop");
+						if (SysValues.FORCE_STOP) this.seppuku("ForceStop");
 						continue;
 					}
 					
-					if (SysValues.InternalOnly) command.put("internal", true);
+					if (SysValues.INTERNAL_ONLY) command.put("internal", true);
 					// Okay, we have constructed the command, send it into the system
 					JSONObject response = NM.keycommand( command );
 					
@@ -149,7 +149,7 @@ public class ListenRunnable implements Runnable {
 					broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
 					broadcast( "Sent in hex:" + DatatypeConverter.printHexBinary(bytes) );
 					sh.SendBytes(bytes);
-					if (SysValues.ForceStop) this.seppuku("ForceStop");
+					if (SysValues.FORCE_STOP) this.seppuku("ForceStop");
 					continue;
 					
 				}catch ( BufferUnderflowException e2) {
@@ -157,7 +157,7 @@ public class ListenRunnable implements Runnable {
 					byte[] bytes = new byte[1];
 					bytes[0] = 5;	//Tell the user its an invalid command
 					sh.SendBytes(bytes);
-					if (SysValues.ForceStop) this.seppuku("ForceStop");
+					if (SysValues.FORCE_STOP) this.seppuku("ForceStop");
 					continue;
 					
 				}catch (JSONException | UnsupportedEncodingException e3 ){
@@ -167,7 +167,7 @@ public class ListenRunnable implements Runnable {
 					bytes[0] = 5;
 					//Tell the user its an invalid command
 					sh.SendBytes(bytes);
-					if (SysValues.ForceStop) this.seppuku("ForceStop");
+					if (SysValues.FORCE_STOP) this.seppuku("ForceStop");
 					continue;
 				}
 				

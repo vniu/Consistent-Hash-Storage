@@ -13,7 +13,7 @@ public class NodeStatusRunnable implements Runnable {
 	}
 
 	private void broadcast( String m ){
-		if ( !SysValues.debug ) return;
+		if ( !SysValues.DEBUG ) return;
 
 		System.out.println( "NodeStatus> " + m );
 	}
@@ -70,7 +70,7 @@ public class NodeStatusRunnable implements Runnable {
 		if ( gracelist.hasInGraceList(url) ){
 			//Responded OK recently, might still be ok - wait for more confirms of dead
 			long grace = gracelist.getGraceListLong(url);
-			if ( (System.currentTimeMillis() - grace) > SysValues.maxgrace*1000 ){
+			if ( (System.currentTimeMillis() - grace) > SysValues.MAX_GRACE*1000 ){
 				gracelist.removeFromGraceList(url);
 				broadcast("Removing " + url + " from grace list.");
 			}else{
@@ -82,14 +82,14 @@ public class NodeStatusRunnable implements Runnable {
 		
 		SocketHelper check = new SocketHelper ( );
 
-		if ( check.CreateConnection( url, SysValues.statusport ) != 0){
+		if ( check.CreateConnection( url, SysValues.STATUS_PORT ) != 0){
 			gracelist.dead_servers.add( url );
 			broadcast( url + " is DEAD! Socket fail.");
 			check.CloseConnection();
 			return;
 		}
 		check.SendMessage("{\"status\":true}");
-		String finalstr = check.ReceiveMessage(SysValues.listentimeout );
+		String finalstr = check.ReceiveMessage(SysValues.LISTEN_TIMEOUT );
 		if ( finalstr == null ){
 			gracelist.dead_servers.add( url );
 			broadcast( url + " is DEAD! Null reply.");
@@ -113,14 +113,14 @@ public class NodeStatusRunnable implements Runnable {
 			
 			SocketHelper check = new SocketHelper ( );
 
-			if ( check.CreateConnection( url, SysValues.statusport ) != 0){
+			if ( check.CreateConnection( url, SysValues.STATUS_PORT ) != 0){
 				// Still likely dead
 				check.CloseConnection();
 				return;
 			}
 			
 			check.SendMessage("{\"status\":true}");
-			String finalstr = check.ReceiveMessage(SysValues.listentimeout );
+			String finalstr = check.ReceiveMessage(SysValues.LISTEN_TIMEOUT );
 			if ( finalstr == null ){
 				// Still likely dead
 				return;
