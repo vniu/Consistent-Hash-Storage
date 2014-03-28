@@ -17,7 +17,7 @@ public class NodeMaster {
 	public  JSONArray servers; 
 	public GraceList gracelist;
 	public DataStorage my_storage;
-	
+
 	Thread NodeStatus;
 
 	/**
@@ -52,13 +52,13 @@ public class NodeMaster {
 			return DataStorage.craftResponse(5);
 		}
 
-		if ( j.has("shutdown") ){
-			SysValues.shutdown = true;
+		if ( j.has("shutdown") ){	
+			SysValues.shutdown = true;				// End the program
 			return DataStorage.craftResponse(0);
 
 		}else if( j.has("status") ){
-			return DataStorage.craftResponse(200);
-			
+			return DataStorage.craftResponse(200);	// Recieved the status check - reply OK
+
 		}else if ( j.has("internal") == false ){
 			// Externalize the command
 			return this.sendmessageremote( j );
@@ -78,7 +78,7 @@ public class NodeMaster {
 		return DataStorage.craftResponse(5);
 	}
 
-	
+
 
 	/**
 	 * 		A preliminary test of Consistent Hashing. 
@@ -107,77 +107,42 @@ public class NodeMaster {
 
 	/**
 	 * 		Externalize a command to the location based off of our consistent hashing
-	 * 		function. Will basically send the same command, with an appended key
+	 * 		function. Method changes depending on strategy.
+	 * 
+	 * 		If it's internal only, it will change the external command to an internal one.		
+	 * 
+	 * 		For Failover or Redundancy:
+	 * 		Will basically send the same command, with an appended key
 	 * 		that lets the server know it is an internal system command instead of a client one.
 	 * 
-	 * @param j		The message to externalize.
-	 * @return		The result received by the server.
+	 * @param message		The message to externalize.
+	 * @return					The result received by the server.
 	 */
-	public JSONObject sendmessageremote( JSONObject j ){
-		int location = 0;
-
-
-		// This is the old way - no redundancy:
-
-		if ( SysValues.FAILOVER_ONLY ) {
-			String url = null;
-			JSONObject response = new JSONObject();
+	public JSONObject sendmessageremote( JSONObject message ){
+		
+		if (SysValues.INTERNAL_ONLY) {
+			return strategy_InternalOnly ( message );
 			
-			try {
-				location = NodeMaster.mapto ( j.getString("key"), this.servers );
-				url = this.servers.getString(location);
-				j.put("internal", true);
-			} catch (JSONException e) {
-				broadcast("Couldn't map to a location?");
-				return DataStorage.craftResponse(5);
-			}
-			
-			while ( gracelist.dead_servers.contains( url ) ){
-				location++;
-				if ( location == servers.length() ) // Ensure we loop around the servers properly
-					location = 0;
-				try {
-					url = this.servers.getString(location);
-					continue;
-				} catch (JSONException e1) {
-					broadcast("Couldn't map to a location?");
-					return DataStorage.craftResponse(5);
-				}
-			}
-			
-			while (true){
-				response = __DEPRECIATED__sendMessageTo ( j, url );
-			
-				try {
-					if ( response.getInt("ErrorCode") == 23 ){
-						gracelist.addTestURLs ( url );
-						throw new JSONException("Node connect fail");
-					}else{
-						gracelist.addToGraceList(url);
-						return response;
-					}
-				} catch (JSONException e) {
-				// Node CONNECTION was a failure, go to next node.
-					while ( gracelist.dead_servers.contains( url ) ){
-						location++;
-						if ( location == servers.length() ) // Ensure we loop around the servers properly
-							location = 0;
-						try {
-							url = this.servers.getString(location);
-							continue;
-						} catch (JSONException e1) {
-							broadcast("Couldn't map to a location?");
-							return DataStorage.craftResponse(5);
-						}
-					}
-					
-				}
-			}
-		}// End failover only
+		}else if ( SysValues.FAILOVER_ONLY ) {
+			return strategy_FailoverOnly( message );
 
+		}else{	// Using redundancy
+			return strategy_Redundancy( message );
+		}
+	}
+
+	/**
+	 * 		Will execute the message send using a redundancy strategy.
+	 * 
+	 * @param message	The request to send.
+	 * @return			The agreed upon response over replicas.
+	 */
+	private JSONObject strategy_Redundancy( JSONObject message ){
+		//TODO: Threadify?
+		
 		//Thread red = new Thread( new RedundancyRunnable(agreed_response, j, this) );
 		//red.start();
-		
+
 		//int timer = 0;
 		//while ( agreed_response.size() == 0 ){
 		//	try {
@@ -189,19 +154,95 @@ public class NodeMaster {
 		//		return craftResponse(3);
 		//}
 		//return agreed_response.firstElement();
-		
+
 		Vector<JSONObject> agreed_response = new Vector<JSONObject>();
-		RedundancyRunnable RR = new RedundancyRunnable( agreed_response, j, this );
+		RedundancyRunnable RR = new RedundancyRunnable( agreed_response, message, this );
 		RR.execute();
 		if (agreed_response.size() == 0 ) return DataStorage.craftResponse(3);
-		return agreed_response.firstElement();
 		
+		return agreed_response.firstElement();
 	}
+
+
+	/**
+	 * 		This is the old way - no redundancy. Will send to the intended location,
+	 * 		or failover to the next location.
+	 * 
+	 * @param message	The request to send.
+	 * @return			The agreed upon response over replicas.
+	 */
+	private JSONObject strategy_FailoverOnly ( JSONObject message ){
+		String url = null;
+		JSONObject response = new JSONObject();
+		int location = 0;
+
+
+		try {
+			location = NodeMaster.mapto ( message.getString("key"), this.servers );
+			url = this.servers.getString(location);
+			message.put("internal", true);
+		} catch (JSONException e) {
+			broadcast("Couldn't map to a location?");
+			return DataStorage.craftResponse(5);
+		}
+
+		while ( gracelist.dead_servers.contains( url ) ){
+			location++;
+			if ( location == servers.length() ) // Ensure we loop around the servers properly
+				location = 0;
+			try {
+				url = this.servers.getString(location);
+				continue;
+			} catch (JSONException e1) {
+				broadcast("Couldn't map to a location?");
+				return DataStorage.craftResponse(5);
+			}
+		}
+
+		while (true){
+			response = __DEPRECIATED__sendMessageTo ( message, url );
+
+			try {
+				if ( response.getInt("ErrorCode") == 23 ){
+					gracelist.addTestURLs ( url );
+					throw new JSONException("Node connect fail");
+				}else{
+					gracelist.addToGraceList(url);
+					return response;
+				}
+			} catch (JSONException e) {
+				// Node CONNECTION was a failure, go to next node.
+				while ( gracelist.dead_servers.contains( url ) ){
+					location++;
+					if ( location == servers.length() ) // Ensure we loop around the servers properly
+						location = 0;
+					try {
+						url = this.servers.getString(location);
+						continue;
+					} catch (JSONException e1) {
+						broadcast("Couldn't map to a location?");
+						return DataStorage.craftResponse(5);
+					}
+				}
+
+			}
+		}
+	}// End failover only
 	
-	
-	
-	
-	
+	/**
+	 * 	The simplest of strategies - ignore other nodes, only store data locally.
+	 * 
+	 * @param message	The request to send.
+	 * @return			The agreed upon response over replicas.
+	 */
+	private JSONObject strategy_InternalOnly ( JSONObject message ){
+
+		try {
+			message.put("internal", true);
+		} catch (JSONException e) {} // Hardcoded non null key, can't get here
+		
+		return keycommand(message);
+	}
 
 	/**
 	 * 		Depreciated with new redundancy functionality.
@@ -242,6 +283,6 @@ public class NodeMaster {
 		}
 	}
 
-	
+
 
 }

@@ -64,9 +64,7 @@ public class ListenRunnable implements Runnable {
 					this.seppuku("Stop");
 					return;
 				}
-				
-				if (SysValues.INTERNAL_ONLY) j.put("internal", true);
-				
+								
 				JSONObject response = NM.keycommand( j ); // Send the response into the system
 				
 				broadcast("Response ErrorCode: " + response.getInt("ErrorCode") );
@@ -125,7 +123,6 @@ public class ListenRunnable implements Runnable {
 						continue;
 					}
 					
-					if (SysValues.INTERNAL_ONLY) command.put("internal", true);
 					// Okay, we have constructed the command, send it into the system
 					JSONObject response = NM.keycommand( command );
 					
