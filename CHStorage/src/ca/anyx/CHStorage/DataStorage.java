@@ -9,7 +9,7 @@ import org.json.JSONObject;
  *
  */
 public class DataStorage {
-	private JSONObject storage;
+	protected JSONObject storage;
 	private int storagecount = 0;
 
 	/**
@@ -41,23 +41,25 @@ public class DataStorage {
 	/**
 	 * 		Puts a key and its value into this system.
 	 * 
-	 * @param j		The key/value pair to put in.
-	 * @return		JSONObject with the status: ErrorCode 4 if the put failed, 0 if successful.
+	 * @param putrequest	Contains the key/value pair to put in.
+	 * @return				JSONObject with the status: ErrorCode 4 if the put failed, 0 if successful.
 	 */
-	public synchronized JSONObject putKV( JSONObject j ) {
+	public synchronized JSONObject putKV( JSONObject putrequest ) {
 
 		try {
 			if ( storagecount >= SysValues.MAX_STORAGE )
 				return craftResponse(2);
 
-			if ( this.storage.has( j.getString("key") ) ){
+			if ( this.storage.has( putrequest.getString("key") ) ){
 				// Already had the key, don't change storage count as we replace it
 			}else{
 				storagecount++;
 			}
 
-			this.storage.put( j.getString( "key" ), j.get( "value" ) );
-			broadcast("Put key: " + j.getString( "key" ) );
+			//this.storage.put( j.getString( "key" ), j.get( "value" ) );
+			putKV_actual(putrequest);
+			
+			broadcast("Put key: " + putrequest.getString( "key" ) );
 
 			return craftResponse(0);
 
@@ -66,19 +68,31 @@ public class DataStorage {
 			return craftResponse(4); 
 		}
 	}
+	
+	/**
+	 * 		Intended to be override-able, the actual request to the data structure.
+	 * 
+	 * @param putrequest		Request containing at least the key and value.
+	 * @throws JSONException	If the key/value were somehow formatted wrong.
+	 */
+	public synchronized void putKV_actual( JSONObject putrequest ) throws JSONException {
+		this.storage.put( putrequest.getString( "key" ), putrequest.get( "value" ) );
+	}
+	
 
 	/**
 	 * 		Retrieves a key from the system.
 	 * 
-	 * @param j		The key to get the value for.
-	 * @return		JSONObject with the status: ErrorCode 1 if key was not found, 0 if successful.
-	 * 				Will also contain the value in the object if it was successful.
+	 * @param getrequest	Contains the key to get the value for.
+	 * @return				JSONObject with the status: ErrorCode 1 if key was not found, 0 if successful.
+	 * 						Will also contain the value in the object if it was successful.
 	 */
-	public synchronized JSONObject getKV( JSONObject j ) {
-		//value;
-		JSONObject response = craftResponse(0);
+	public synchronized JSONObject getKV( JSONObject getrequest ) {
+		
 		try {
-			Object value = this.storage.get( j.getString( "key" ) );
+			JSONObject response = craftResponse(0);
+			//Object value = this.storage.get( getrequest.getString( "key" ) );
+			String value = getKV_actual( getrequest );
 			response.put("value", value);
 
 			return response;
@@ -88,19 +102,34 @@ public class DataStorage {
 			return craftResponse(1);
 		}
 	}
+	
+	/**
+	 * 		Intended to be override-able, the actual request to the data structure.
+	 * 
+	 * @param getrequest		Contains the key to get
+	 * @return					The value associated
+	 * @throws JSONException	No value found
+	 */
+	public synchronized String getKV_actual( JSONObject getrequest ) throws JSONException {
+		String value = this.storage.getString( getrequest.getString( "key" ) );
+		return value;
+	}
+	
 
 	/**
 	 * 		Will remove a key and its value from the system.
 	 * 
-	 * @param j		A container with the key of the object to remove.
-	 * @return		JSONObject with the status: ErrorCode 1 if the key was not found, 0 if successful.
+	 * @param removerequest		A container with the key of the object to remove.
+	 * @return					JSONObject with the status: ErrorCode 1 if the key was not found, 0 if successful.
 	 */
-	public synchronized JSONObject removeKV( JSONObject j ) {
+	public synchronized JSONObject removeKV( JSONObject removerequest ) {
 
 		try {
-			Object s = this.storage.remove( j.getString( "key" ) );
+			//Object s = this.storage.remove( removerequest.getString( "key" ) );
+			Object s = removeKV_actual( removerequest );
+			
 			if ( s == null ) throw new JSONException("null");
-			broadcast("Removed key: " + j.getString( "key" ) );
+			broadcast("Removed key: " + removerequest.getString( "key" ) );
 			storagecount--;
 			return craftResponse(0);
 
@@ -109,6 +138,19 @@ public class DataStorage {
 			return craftResponse(1);
 		}
 	}
+	
+	/**
+	 * 		Intended to be override-able, the actual request to the data structure.
+	 * 
+	 * @param removerequest		Contains the key to remove
+	 * @return					Value associated, or null if not found
+	 * @throws JSONException	If the key was not found
+	 */
+	public synchronized Object removeKV_actual( JSONObject removerequest ) throws JSONException {
+		Object s = this.storage.remove( removerequest.getString( "key" ) );
+		return s;
+	}
+	
 	
 	/**
 	 * 		A helper function to quickly make a response with an error code.

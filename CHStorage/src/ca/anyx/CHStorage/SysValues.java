@@ -54,11 +54,11 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	/** Enable or disable socket read output to stdout (lots of spam!) */
 	public final static Boolean SHOW_VALUES = true;		
 	
-	/** Ignore Consistent hashing, store and retrieve only from local storage. */
-	public final static Boolean INTERNAL_ONLY = false;
-	
-	/** Will ignore redundancy options, and connect to the next node in the sequence if the connection failed. */
-	public final static Boolean FAILOVER_ONLY = false; 		
+	/** INTERNAL_ONLY	will ignore Consistent hashing, store and retrieve only from local storage.
+	  *	FAILOVER_ONLY	will ignore redundancy options, and connect to the next node in the sequence if the connection failed. 
+	  *	REDUNDANCY 		will implement the full redundant based strategy.
+	  */
+	public final static StorageStrategy STORAGE_STRATEGY = StorageStrategy.REDUNDANCY;
 	
 	/** Immediately close a connection to a client after we have finished their request
 		In this sense, they must make a new connection to issue their next request. */

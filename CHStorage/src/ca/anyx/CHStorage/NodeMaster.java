@@ -29,7 +29,12 @@ public class NodeMaster {
 	public NodeMaster( JSONObject serverlist ) throws JSONException {
 		servers = serverlist.getJSONArray("servers");
 		gracelist = new GraceList();
-		my_storage = new DataStorage();
+		
+		if (SysValues.STORAGE_STRATEGY == StorageStrategy.REDUNDANCY)
+			my_storage = new RedundantStorage();
+		else
+			my_storage = new DataStorage();
+		
 		NodeStatus = new Thread ( new NodeStatusRunnable( this ) );
 		NodeStatus.start();
 	}
@@ -120,14 +125,18 @@ public class NodeMaster {
 	 */
 	public JSONObject sendmessageremote( JSONObject message ){
 		
-		if (SysValues.INTERNAL_ONLY) {
-			return strategy_InternalOnly ( message );
+		switch (SysValues.STORAGE_STRATEGY){
+			case INTERNAL_ONLY:
+				return strategy_InternalOnly ( message );
 			
-		}else if ( SysValues.FAILOVER_ONLY ) {
-			return strategy_FailoverOnly( message );
-
-		}else{	// Using redundancy
-			return strategy_Redundancy( message );
+			case FAILOVER_ONLY:
+				return strategy_FailoverOnly( message );
+				
+			case REDUNDANCY:
+				return strategy_Redundancy( message );
+				
+			default:
+				return strategy_Redundancy( message );
 		}
 	}
 
