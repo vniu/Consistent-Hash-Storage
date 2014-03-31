@@ -84,6 +84,7 @@ public class RedundancyRunnable { //implements Runnable {
 						// just put the intended location in
 						location = NodeMaster.mapto ( this.message.getString("key"), nodemaster.servers );
 						location = incrementLocBy( location, i );
+						redundanturl = nodemaster.servers.getString(location);
 						break;
 					}
 					redundanturl = nodemaster.servers.getString(location);
