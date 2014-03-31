@@ -238,27 +238,31 @@ public class RedundancyRunnable { //implements Runnable {
 		while ( iter.hasNext() ){
 			SocketHelper working_sh = iter.next();
 			
-			if ( 		nodemaster.gracelist.dead_servers.contains( working_sh.myURL )  // Already marked as dead
-					||	nodemaster.gracelist.to_test.contains( working_sh.myURL ) 	 ){ // Already marked for testing (could be dead)
-				
+			if ( nodemaster.gracelist.dead_servers.contains( working_sh.myURL ) ) { // Already marked as dead
 				
 				// TODO: Need to replicate the data...
-				working_sh.SendMessage("{\"stop\":true}");
-				working_sh.CloseConnection();
-				iter.remove();
+				
+			}else if ( nodemaster.gracelist.to_test.contains( working_sh.myURL ) ){ // Already marked for testing (could be dead)
+				
+				// TODO: Need to replicate the data...
 				
 			}else{
 				// Do a full wait on the connection
 				String response = working_sh.ReceiveMessage(SysValues.LISTEN_TIMEOUT);
 				if ( response == null ){
-					nodemaster.gracelist.addTestURLs ( working_sh.myURL );
+					//nodemaster.gracelist.addTestURLs ( working_sh.myURL );
+					nodemaster.gracelist.dead_servers.add( working_sh.myURL );
 					// TODO: Need to replicate the data...
-				}// if response wasn't null, its still alive
-				working_sh.SendMessage("{\"stop\":true}");
-				working_sh.CloseConnection();
-				iter.remove();
+				}
+				
+				// if response wasn't null, its still alive
 			}
-		}
+			
+			working_sh.SendMessage("{\"stop\":true}");
+			working_sh.CloseConnection();
+			iter.remove();
+			
+		} // End while
 	}
 
 	/**
