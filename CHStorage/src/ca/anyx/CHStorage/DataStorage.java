@@ -154,6 +154,14 @@ public class DataStorage {
 	
 	/**
 	 * 		A helper function to quickly make a response with an error code.
+	 * 	<br>   0 : Success
+	 * 	<br>   1 : Non-Existent key
+	 * 	<br>   2 : No space remaining to put
+	 * 	<br>   3 : System overload
+	 * 	<br>   4 : Internal Store failure
+	 * 	<br>   5 : Unrecognized or malformed command
+	 * 	<br> 200 : Status OK
+	 * 
 	 * 
 	 * @param ErrorCode	The (int) error code to be placed under the key "ErrorCode"
 	 * @return			The newly formed object
@@ -168,7 +176,7 @@ public class DataStorage {
 				response.put("ErrorInfo", "Success!");
 				break;
 			case 1:
-				response.put("ErrorInfo", "Non-Existant key.");
+				response.put("ErrorInfo", "Non-Existent key.");
 				break;
 			case 2:
 				response.put("ErrorInfo", "No space remaining to put.");
