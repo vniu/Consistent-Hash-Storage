@@ -3,11 +3,11 @@ package ca.anyx.CHStorage;
 import java.util.Iterator;
 import java.util.Vector;
 
-public class NodeStatusRunnable implements Runnable {
+public class RepairServiceRunnable implements Runnable {
 	public Vector<String> potentially_dead;
 	private ServerListsInfo link_serverinfo;
 
-	NodeStatusRunnable( ServerListsInfo serverinfo ){
+	RepairServiceRunnable( ServerListsInfo serverinfo ){
 		potentially_dead= new Vector<String>();
 		this.link_serverinfo = serverinfo;
 	}
@@ -15,7 +15,7 @@ public class NodeStatusRunnable implements Runnable {
 	private void broadcast( String m ){
 		if ( !SysValues.DEBUG ) return;
 
-		System.out.println( "NodeStatus> " + m );
+		System.out.println( "RepairService> " + m );
 	}
 
 	@Override

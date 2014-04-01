@@ -66,10 +66,12 @@ public class RedundancyRunnable { //implements Runnable {
 			agreed_response.add( DataStorage.craftResponse(4) );
 			return;
 		}	
-
+		
+		// Get the agreed response -- will put it into this objects agreed_response collection
 		getAgreed ( open_connections );
 		
-		//TODO: finalize ( open_connections )
+		// Any remaining connections (maybe dead, maybe slow), should be finalized. 
+		finalizeSockets(open_connections); //TODO: Maybe make just this part a separate thread?
 
 		return;
 	}
@@ -94,14 +96,14 @@ public class RedundancyRunnable { //implements Runnable {
 				broadcast("TIMEOUT ON REDUNDANCY.");
 
 				if ( mode(responsecodes)[1] == 0 ) { // Not good, max count is zero...
-					// Looks like we couldn't store it.. //TODO:
+					// Looks like we couldn't store it.. //TODO: ??????
 					agreed_response.add( DataStorage.craftResponse(4) );
-					//finalizeSockets( shs );
+					//finalizeSockets( shs ); // Now returning with non-finished sockets still in vector
 					return;
 				}
 				//just return the current mode.
 				agreed_response.add( responses.elementAt(mode(responsecodes)[0]) );
-				//finalizeSockets( shs );
+				//finalizeSockets( shs ); // Now returning with non-finished sockets still in vector
 				return;
 			}
 
@@ -144,7 +146,7 @@ public class RedundancyRunnable { //implements Runnable {
 		// We have enough responses
 		broadcast("Using " + mode(responsecodes)[1] + " of " + responses.size() + " responses.");
 
-		//finalizeSockets( shs );
+		//finalizeSockets( shs ); // Now returning with non-finished sockets still in vector
 		return;
 	}
 
@@ -252,7 +254,6 @@ public class RedundancyRunnable { //implements Runnable {
 	}
 
 	/**
-	 * 	WORK IN PROGRESS
 	 * 		Attempts to finalize connects that are open ( useful after an agreed response was reached )
 	 * 		Is responsible for propagating if there was a failed message.
 	 * 

@@ -21,9 +21,9 @@ public class NodeMaster {
 	Thread NodeStatus;
 
 	/**
-	 * 		Constructor - a new NodeMaster object based on the server text file.
+	 * 		Constructor - a new NodeMaster object based on the servers.
 	 * 
-	 * @param serverinfo		The server lists object.
+	 * @param serverinfo	The server lists object.
 	 */
 	public NodeMaster( ServerListsInfo serverinfo ) {
 		link_serverinfo = serverinfo;
@@ -33,7 +33,7 @@ public class NodeMaster {
 		else
 			my_storage = new DataStorage();
 		
-		NodeStatus = new Thread ( new NodeStatusRunnable( link_serverinfo ) );
+		NodeStatus = new Thread ( new RepairServiceRunnable( link_serverinfo ) );
 		NodeStatus.start();
 	}
 

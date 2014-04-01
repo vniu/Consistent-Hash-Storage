@@ -5,8 +5,6 @@ import org.json.JSONObject;
 
 /**
  *	The data stored on this node, currently as a JSONObject of key:value pairs.
- *
- *
  */
 public class DataStorage {
 	protected JSONObject storage;
@@ -22,7 +20,7 @@ public class DataStorage {
 	private static void broadcast ( String m ) {
 		if ( !SysValues.DEBUG ) return;
 
-		System.out.println( "NodeMaster> " + m );
+		System.out.println( "Storage> " + m );
 	}
 	
 	/**
