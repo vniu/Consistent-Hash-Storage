@@ -1,6 +1,7 @@
 package ca.anyx.CHStorage;
 
 public class SysValues {	//TODO: Change all these from hardcoded? Load from text file perhaps?
+	public final static String VERSION = "4.0.0";
 	
 	public final static int CLIENT_PORT = 2324; 			
 	public final static int INTERNAL_PORT = 3333; 

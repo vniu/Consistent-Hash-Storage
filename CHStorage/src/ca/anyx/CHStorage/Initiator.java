@@ -90,7 +90,7 @@ public class Initiator {
 						new FileOutputStream( SysValues.OUTPUT_FILE_NAME ), "ISO-8859-1"));
 
 				// Write node's storage data to text file for external viewing
-				writer.write( 
+				writer.write( 	"Version: " + SysValues.VERSION + "\n\n" +
 								"Dead Servers: \n" +
 										serverinfo.dead_servers.toString() + 
 								"\n\n\n" +
