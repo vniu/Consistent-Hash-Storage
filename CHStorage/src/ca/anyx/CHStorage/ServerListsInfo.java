@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -13,13 +14,16 @@ import org.json.JSONObject;
  * 		servers in grace, that need to be tested, and ones that are confirmed down.
  * 
  */
-public class GraceList {
+public class ServerListsInfo {
+	public JSONArray servers;
+	
 	public JSONObject gracelist;
 	public Set<String> to_test;
 	public Set<String> dead_servers;
 	public Vector<SocketHelper> unfinished_connections;
 
-	public GraceList(){
+	public ServerListsInfo( JSONObject serverlist ) throws JSONException{
+		servers = serverlist.getJSONArray("servers");
 		gracelist = new JSONObject();
 		to_test = new HashSet<String>();
 		dead_servers = new HashSet<String>();

@@ -5,11 +5,11 @@ import java.util.Vector;
 
 public class NodeStatusRunnable implements Runnable {
 	public Vector<String> potentially_dead;
-	private GraceList gracelist;
+	private ServerListsInfo link_serverinfo;
 
-	NodeStatusRunnable( NodeMaster nm ){
+	NodeStatusRunnable( ServerListsInfo serverinfo ){
 		potentially_dead= new Vector<String>();
-		this.gracelist = nm.gracelist;
+		this.link_serverinfo = serverinfo;
 	}
 
 	private void broadcast( String m ){
@@ -39,7 +39,7 @@ public class NodeStatusRunnable implements Runnable {
 			//attemptToFinalize();
 			
 			
-			potentially_dead.addAll(gracelist.to_test);
+			potentially_dead.addAll(link_serverinfo.to_test);
 
 			// Check the status of all the servers that are potentially dead
 			Iterator<String> iter = potentially_dead.iterator();
@@ -49,12 +49,12 @@ public class NodeStatusRunnable implements Runnable {
 					broadcast("Null url? Something went wrong when adding urls.");
 					iter.remove();
 					continue;
-				}else if ( gracelist.dead_servers.contains( url ) ){
+				}else if ( link_serverinfo.dead_servers.contains( url ) ){
 					iter.remove(); //already noted as dead
 					continue;
 				}else{
 					checkIfDead ( url );
-					gracelist.to_test.remove(url); // remove from list to test after we checked it
+					link_serverinfo.to_test.remove(url); // remove from list to test after we checked it
 					iter.remove();
 					continue;
 				}
@@ -65,13 +65,13 @@ public class NodeStatusRunnable implements Runnable {
 
 	public void checkIfDead ( String url ){
 		
-		if ( gracelist.dead_servers.contains(url) ) return; // already confirmed dead
+		if ( link_serverinfo.dead_servers.contains(url) ) return; // already confirmed dead
 		
-		if ( gracelist.hasInGraceList(url) ){
+		if ( link_serverinfo.hasInGraceList(url) ){
 			//Responded OK recently, might still be ok - wait for more confirms of dead
-			long grace = gracelist.getGraceListLong(url);
+			long grace = link_serverinfo.getGraceListLong(url);
 			if ( (System.currentTimeMillis() - grace) > SysValues.MAX_GRACE*1000 ){
-				gracelist.removeFromGraceList(url);
+				link_serverinfo.removeFromGraceList(url);
 				broadcast("Removing " + url + " from grace list.");
 			}else{
 				//this.gracelist.put( url, System.currentTimeMillis() );
@@ -83,7 +83,7 @@ public class NodeStatusRunnable implements Runnable {
 		SocketHelper check = new SocketHelper ( );
 
 		if ( check.CreateConnection( url, SysValues.STATUS_PORT ) != 0){
-			gracelist.dead_servers.add( url );
+			link_serverinfo.dead_servers.add( url );
 			broadcast( url + " is DEAD! Socket fail.");
 			check.CloseConnection();
 			return;
@@ -91,7 +91,7 @@ public class NodeStatusRunnable implements Runnable {
 		check.SendMessage("{\"status\":true}");
 		String finalstr = check.ReceiveMessage(SysValues.LISTEN_TIMEOUT );
 		if ( finalstr == null ){
-			gracelist.dead_servers.add( url );
+			link_serverinfo.dead_servers.add( url );
 			broadcast( url + " is DEAD! Null reply.");
 			return;
 		}
@@ -99,14 +99,14 @@ public class NodeStatusRunnable implements Runnable {
 
 		
 		// If we get here --  Must have just been slow?
-		gracelist.addToGraceList(url);
+		link_serverinfo.addToGraceList(url);
 		broadcast("Adding " + url + " to grace list.");
 		
 	}
 	
 	
 	public void attemptRepair(){
-		Iterator<String> iter = gracelist.dead_servers.iterator();
+		Iterator<String> iter = link_serverinfo.dead_servers.iterator();
 		
 		while ( iter.hasNext() ){
 			String url = iter.next();
@@ -129,8 +129,8 @@ public class NodeStatusRunnable implements Runnable {
 
 			
 			// If we get here -- they responded to our "ping". They are likely alive again.
-			gracelist.dead_servers.remove(url);
-			gracelist.addToGraceList(url);
+			link_serverinfo.dead_servers.remove(url);
+			link_serverinfo.addToGraceList(url);
 			broadcast("Adding " + url + " to grace list as per Repair.");
 		}
 		

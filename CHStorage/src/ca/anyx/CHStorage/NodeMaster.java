@@ -14,8 +14,8 @@ import org.json.JSONObject;
  *		Responsible for deciphering and executing commands.
  */
 public class NodeMaster {
-	public  JSONArray servers; 
-	public GraceList gracelist;
+	private ServerListsInfo	link_serverinfo;
+	
 	public DataStorage my_storage;
 
 	Thread NodeStatus;
@@ -23,19 +23,17 @@ public class NodeMaster {
 	/**
 	 * 		Constructor - a new NodeMaster object based on the server text file.
 	 * 
-	 * @param serverlist		The list of servers that will be running the program.
-	 * @throws JSONException	if something was wrong with the server list format.
+	 * @param serverinfo		The server lists object.
 	 */
-	public NodeMaster( JSONObject serverlist ) throws JSONException {
-		servers = serverlist.getJSONArray("servers");
-		gracelist = new GraceList();
+	public NodeMaster( ServerListsInfo serverinfo ) {
+		link_serverinfo = serverinfo;
 		
 		if (SysValues.STORAGE_STRATEGY == StorageStrategy.REDUNDANCY)
 			my_storage = new RedundantStorage();
 		else
 			my_storage = new DataStorage();
 		
-		NodeStatus = new Thread ( new NodeStatusRunnable( this ) );
+		NodeStatus = new Thread ( new NodeStatusRunnable( link_serverinfo ) );
 		NodeStatus.start();
 	}
 
@@ -165,7 +163,7 @@ public class NodeMaster {
 		//return agreed_response.firstElement();
 
 		Vector<JSONObject> agreed_response = new Vector<JSONObject>();
-		RedundancyRunnable RR = new RedundancyRunnable( agreed_response, message, this );
+		RedundancyRunnable RR = new RedundancyRunnable( agreed_response, message, link_serverinfo );
 		RR.execute();
 		if (agreed_response.size() == 0 ) return DataStorage.craftResponse(3);
 		
@@ -187,20 +185,20 @@ public class NodeMaster {
 
 
 		try {
-			location = NodeMaster.mapto ( message.getString("key"), this.servers );
-			url = this.servers.getString(location);
+			location = NodeMaster.mapto ( message.getString("key"), link_serverinfo.servers );
+			url = link_serverinfo.servers.getString(location);
 			message.put("internal", true);
 		} catch (JSONException e) {
 			broadcast("Couldn't map to a location?");
 			return DataStorage.craftResponse(5);
 		}
 
-		while ( gracelist.dead_servers.contains( url ) ){
+		while ( link_serverinfo.dead_servers.contains( url ) ){
 			location++;
-			if ( location == servers.length() ) // Ensure we loop around the servers properly
+			if ( location == link_serverinfo.servers.length() ) // Ensure we loop around the servers properly
 				location = 0;
 			try {
-				url = this.servers.getString(location);
+				url = link_serverinfo.servers.getString(location);
 				continue;
 			} catch (JSONException e1) {
 				broadcast("Couldn't map to a location?");
@@ -213,20 +211,20 @@ public class NodeMaster {
 
 			try {
 				if ( response.getInt("ErrorCode") == 23 ){
-					gracelist.addTestURLs ( url );
+					link_serverinfo.addTestURLs ( url );
 					throw new JSONException("Node connect fail");
 				}else{
-					gracelist.addToGraceList(url);
+					link_serverinfo.addToGraceList(url);
 					return response;
 				}
 			} catch (JSONException e) {
 				// Node CONNECTION was a failure, go to next node.
-				while ( gracelist.dead_servers.contains( url ) ){
+				while ( link_serverinfo.dead_servers.contains( url ) ){
 					location++;
-					if ( location == servers.length() ) // Ensure we loop around the servers properly
+					if ( location == link_serverinfo.servers.length() ) // Ensure we loop around the servers properly
 						location = 0;
 					try {
-						url = this.servers.getString(location);
+						url = link_serverinfo.servers.getString(location);
 						continue;
 					} catch (JSONException e1) {
 						broadcast("Couldn't map to a location?");

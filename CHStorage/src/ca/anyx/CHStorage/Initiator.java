@@ -40,6 +40,7 @@ public class Initiator {
 	 */
 	public static void main(String[] args) {
 		NodeMaster NM;
+		ServerListsInfo serverinfo;
 		
 		try {
 			InetAddress iAddress = InetAddress.getLocalHost();
@@ -61,10 +62,12 @@ public class Initiator {
 
 			fis.close();
 
-			JSONObject j = new JSONObject(sb.toString());
-			System.out.println("Main> Server List: " + j.toString());
-
-			NM = new NodeMaster( j );
+			JSONObject serverlist = new JSONObject(sb.toString());
+			System.out.println("Main> Server List: " + serverlist.toString());
+			
+			serverinfo = new ServerListsInfo( serverlist );
+			
+			NM = new NodeMaster( serverinfo );
 			
 			Thread clientServer = new Thread( new ServerRunnable( NM, SysValues.CLIENT_PORT, SysValues.MAX_CLIENT_CONNECTIONS ) );
 			clientServer.start(); // One server to accept incoming client connections
@@ -89,7 +92,7 @@ public class Initiator {
 				// Write node's storage data to text file for external viewing
 				writer.write( 
 								"Dead Servers: \n" +
-								NM.gracelist.dead_servers.toString() + 
+										serverinfo.dead_servers.toString() + 
 								"\n\n\n" +
 								"Local Key Value pairs: \n" + 
 								NM.my_storage.getStorageString()

@@ -23,6 +23,9 @@ public class SocketHelper {
 	
 	public String myURL;
 	
+	/** An optional int attached to this object to determine which replica version we are if someone else needs this info */
+	public int replica_number = -1;
+	
 	/**
 	 * 		Default construction...
 	 */
@@ -135,10 +138,17 @@ public class SocketHelper {
 	
 	
 	/**
-	 * 		This is dumb.
+	 * 		Attempts to receive a message over the socket connection.
+	 * 		Will wait for t seconds, and return null if it times out.
 	 * 
-	 * @param t 	
-	 * @return		
+	 * 		If the message begins with '{' then it is assumed to be a JSON object,
+	 * 		and assumed that the message ends with a '\n', aka, it was printed as a string.
+	 * 		
+	 * 		If not, then it's assumed to be in a byte-wise format that is horrible. 
+	 * 		(It just gets converted to JSON in the layer above it)
+	 * 
+	 * @param t 	How long to wait, in seconds
+	 * @return		The message, or null if we couldn't get a message, or end of stream was reached.
 	 */
 	public String ReceiveMessage( int t ){
 		try {
