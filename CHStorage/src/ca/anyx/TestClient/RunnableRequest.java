@@ -7,10 +7,13 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Vector;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class RunnableRequest implements Runnable  {
 	private Vector<Float> averagevector;
 	int reqnum = 0;
-	
+	int lastput = 0;
 	/**
 	 * 		Constructor
 	 * 
@@ -55,25 +58,32 @@ public class RunnableRequest implements Runnable  {
 	/**
 	 * 		Will cycle put get and remove depending on last call.
 	 * 		Appends thread id to the key, to ensure other threads don't use the same key.
+	 * 		
+	 * 		If the put was a failure, the next try will be a put (to hope to avoid reading a failed put)
 	 * 
 	 * @return			True if successful, false if not.
 	 */
 	boolean makeSequentialRequest( int i ){
+		boolean resp;
 		
 		switch( reqnum ){
 		case 0:
 			reqnum ++;
 			if (reqnum > 2) reqnum = 0;
-			return makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + Integer.toString(i) + Thread.currentThread().getId() + "\", \"value\":\"" + SysValues.value + "\"}" );
+			lastput++;
+			resp = makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + Integer.toString(lastput) + Thread.currentThread().getId() + "\", \"value\":\"" + SysValues.value + "\"}" );
 		case 1:
 			reqnum ++;
 			if (reqnum > 2) reqnum = 0;
-			return makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + Integer.toString(i-1) + Thread.currentThread().getId() + "\"}" );
+			resp = makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + Integer.toString(lastput) + Thread.currentThread().getId() + "\"}" );
 		default:
 			reqnum ++;
 			if (reqnum > 2) reqnum = 0;
-			return makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + Integer.toString(i-2) + Thread.currentThread().getId() + "\"}" );
-		}		
+			resp = makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + Integer.toString(lastput) + Thread.currentThread().getId() + "\"}" );
+		}
+		
+		if ( resp == false ) reqnum = 0;
+		return resp;
 	}
 	
 	/**
@@ -115,17 +125,29 @@ public class RunnableRequest implements Runnable  {
 
 			BufferedReader br = new BufferedReader( new InputStreamReader( TCP_socket.getInputStream() ) );
 
-			String response = 
-			br.readLine(); // Can print or perhaps change to return the response as necessary
-
-			System.out.println( response );
+			String response = br.readLine(); // Can print or perhaps change to return the response as necessary
+			
+			if (response != null ){
+				try {
+					JSONObject j = new JSONObject ( response );
+					if (j.getInt("ErrorCode") != 0){
+						System.out.print( response );
+						if (TCP_socket != null) TCP_socket.close();
+						throw new IOException("");
+					}
+				} catch (JSONException e) {
+					if (TCP_socket != null) TCP_socket.close();
+					throw new IOException("JSON exception?");
+				}
+			}
+			
 			
 			TCP_socket.close();
 			return true;
 			
 		} catch (IOException e) {
 			System.out.println( "Failure! " + e.getLocalizedMessage() );
-			return false; // Socket failure or timeout
+			return false; // Socket failure or timeout, or bad response
 		}
 	}
 	
