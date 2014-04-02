@@ -27,7 +27,7 @@ public class RedundancyRunnable { //implements Runnable {
 	 * 
 	 * @param _agreed_response	The response will be appended to this vector.
 	 * @param _message			The message to send to the redundant servers
-	 * @param ServerListsInfo	Server info ( To gather servers, or update dead servers )
+	 * @param serverinfo	Server info ( To gather servers, or update dead servers )
 	 */
 	RedundancyRunnable( Vector<JSONObject> _agreed_response, JSONObject _message, ServerListsInfo serverinfo ){
 
@@ -35,9 +35,9 @@ public class RedundancyRunnable { //implements Runnable {
 		for ( int i = 0; i < SysValues.REDUNDANCY_LEVEL; i++){
 			responsecodes[i] = -1; // As per convention, initialize response code to -1
 		}
-
 		this.agreed_response = _agreed_response;
 		this.message = _message;
+		this.link_serverinfo = serverinfo;
 
 		try {
 			this.message.put("internal", true);// Notify of internal connection or else we get recursion
@@ -66,13 +66,15 @@ public class RedundancyRunnable { //implements Runnable {
 			agreed_response.add( DataStorage.craftResponse(4) );
 			return;
 		}	
-		
+		broadcast("Open connections: " + Integer.toString(open_connections.size()));
 		// Get the agreed response -- will put it into this objects agreed_response collection
 		getAgreed ( open_connections );
 		
+		broadcast("Remaining open connections: " + Integer.toString(open_connections.size()));
+
 		// Any remaining connections (maybe dead, maybe slow), should be finalized. 
 		finalizeSockets(open_connections); //TODO: Maybe make just this part a separate thread?
-
+		
 		return;
 	}
 
@@ -263,12 +265,17 @@ public class RedundancyRunnable { //implements Runnable {
 	 */
 	void finalizeSockets( Vector<SocketHelper> shs ){
 		
+		if (shs.size() == 0 ) return; // Nothing to do!
+		
 		Vector<Integer> failed_replicas = new Vector<Integer>();
 		
 		long startTime = System.currentTimeMillis();
 		
 		// Give all the sockets the full timeout value to respond
 		while ( (System.currentTimeMillis() - startTime) < SysValues.LISTEN_TIMEOUT*1000){
+			
+			if (shs.size() == 0 ) return; // All responded -- Nothing to do!
+			
 			
 			Iterator<SocketHelper> iter = shs.iterator();
 			while ( iter.hasNext() ){

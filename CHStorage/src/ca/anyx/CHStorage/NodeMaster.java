@@ -89,7 +89,8 @@ public class NodeMaster {
 	 * 		which is psuedorandom (even distribution), and the result is consistent across 
 	 * 		any node who calls this function on any environment.
 	 * 
-	 * @param key	The value to get the resulting location from.
+	 * @param key		The value to get the resulting location from.
+	 * @param _servers The JSON array containing the list of servers.
 	 * @return		A consistent location between 0 and servers.length() based on the key.
 	 */
 	static public int mapto( String key, JSONArray _servers ){

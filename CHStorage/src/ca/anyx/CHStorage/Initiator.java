@@ -62,7 +62,7 @@ public class Initiator {
 
 			fis.close();
 
-			JSONObject serverlist = new JSONObject(sb.toString());
+			JSONObject serverlist = new JSONObject( sb.toString() );
 			System.out.println("Main> Server List: " + serverlist.toString());
 			
 			serverinfo = new ServerListsInfo( serverlist );

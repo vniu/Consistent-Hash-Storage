@@ -8,7 +8,7 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static int STATUS_PORT = 2325; 
 	
 	/** Limit to n clients at a time. --note that each spawns @{value #redundancylevel} of internal node connections-- */
-	public final static int MAX_CLIENT_CONNECTIONS = 125;
+	public final static int MAX_CLIENT_CONNECTIONS = 40;
 	
 	/** Limit to n internal connections at a time.
 	 *
@@ -35,7 +35,7 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static int REDUNDANCY_LEVEL = 3;			
 	
 	/** Require M of $redundancylevel responses to match before moving ahead. */
-	public final static int MOFN_REDUNDANT = 1;				
+	public final static int MOFN_REDUNDANT = 2;				
 	
 	/** Time in seconds that a server can be on the grace list before it is re-polled on failure to communicate via redundancy. */
 	public final static int MAX_GRACE = 3;					
