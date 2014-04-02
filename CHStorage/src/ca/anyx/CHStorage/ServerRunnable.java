@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-/**
+/**		DEPRECIATED.
  * 		Responsible for allocating clients to new threads.
  */
 public class ServerRunnable implements Runnable {

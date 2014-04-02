@@ -19,6 +19,8 @@ public class NodeMaster {
 	public DataStorage my_storage;
 
 	Thread NodeStatus;
+	
+	FinalizeRunnable finalizer;
 
 	/**
 	 * 		Constructor - a new NodeMaster object based on the servers.
@@ -35,6 +37,13 @@ public class NodeMaster {
 		
 		NodeStatus = new Thread ( new RepairServiceRunnable( link_serverinfo ) );
 		NodeStatus.start();
+		
+		finalizer = new FinalizeRunnable( link_serverinfo );
+		
+		if (SysValues.EXPERIMENTAL_FINALIZER) {
+			Thread fr = new Thread ( finalizer );
+			fr.start();
+		}
 	}
 
 	private static void broadcast ( String m ) {
@@ -162,12 +171,14 @@ public class NodeMaster {
 		//		return craftResponse(3);
 		//}
 		//return agreed_response.firstElement();
-
+		
+		long start = System.currentTimeMillis();
 		Vector<JSONObject> agreed_response = new Vector<JSONObject>();
-		RedundancyRunnable RR = new RedundancyRunnable( agreed_response, message, link_serverinfo );
+		RedundancyRunnable RR = new RedundancyRunnable( agreed_response, message, link_serverinfo, finalizer, this );
 		RR.execute();
 		if (agreed_response.size() == 0 ) return DataStorage.craftResponse(3);
 		
+		broadcast ("SERVED IN: " + Long.toString(System.currentTimeMillis() - start) );
 		return agreed_response.firstElement();
 	}
 

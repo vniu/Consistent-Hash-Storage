@@ -1,7 +1,10 @@
 package ca.anyx.CHStorage;
 
 import java.util.Iterator;
+import java.util.Random;
 import java.util.Vector;
+
+import org.json.JSONException;
 
 public class RepairServiceRunnable implements Runnable {
 	public Vector<String> potentially_dead;
@@ -20,20 +23,37 @@ public class RepairServiceRunnable implements Runnable {
 
 	@Override
 	public void run() {
-		int tempcount = 0;
+		long lastCheck = 0;
+		boolean readyup = false;
+		int nextCheck = 0;
+		Random rng = new Random();
 		
 		while (SysValues.shutdown == false ){
 			
 			// Check every second for now TODO: change!
 			try {
 				Thread.sleep(1000);
-				tempcount++;
 			} catch (InterruptedException e) {}
-
-			if ( tempcount > 10 ){ // TODO: hardcoded 10 seconds
-				tempcount = 0;
-				this.attemptRepair();
+			
+			
+			// Check the status of other nodes. Will happen randomly once within the given time-frame,
+			// as to hope to avoid all nodes attacking each other at the same time.
+			if ( readyup ){
+				// Check to see if we've past the random number between 0 and n seconds, then we do our test.
+				if ( (System.currentTimeMillis() - lastCheck ) >= 1000*nextCheck  ){
+					this.checkAll(); // TODO: WIP, check all servers for status
+					this.attemptRepair();
+					readyup = false;
+				}
 			}
+			// If we're past n seconds, ready up the next multicast
+			if ( (System.currentTimeMillis() - lastCheck ) > SysValues.REPAIR_TIMER*1000){
+				lastCheck = System.currentTimeMillis();
+				nextCheck = rng.nextInt(SysValues.REPAIR_TIMER);
+				readyup = true;
+			}
+			
+			
 			
 			// Try and recieve from the connections that were ignored?
 			//attemptToFinalize();
@@ -63,10 +83,12 @@ public class RepairServiceRunnable implements Runnable {
 
 	}
 
+	//TODO: 
 	public void checkIfDead ( String url ){
 		
 		if ( link_serverinfo.dead_servers.contains(url) ) return; // already confirmed dead
 		
+		/*
 		if ( link_serverinfo.hasInGraceList(url) ){
 			//Responded OK recently, might still be ok - wait for more confirms of dead
 			long grace = link_serverinfo.getGraceListLong(url);
@@ -78,7 +100,7 @@ public class RepairServiceRunnable implements Runnable {
 				return;
 			}
 		}
-		
+		*/
 		
 		SocketHelper check = new SocketHelper ( );
 
@@ -99,13 +121,13 @@ public class RepairServiceRunnable implements Runnable {
 
 		
 		// If we get here --  Must have just been slow?
-		link_serverinfo.addToGraceList(url);
-		broadcast("Adding " + url + " to grace list.");
+		//link_serverinfo.addToGraceList(url);
+		//broadcast("Adding " + url + " to grace list.");
 		
 	}
 	
-	
-	public void attemptRepair(){
+	//TODO:
+	private void attemptRepair(){
 		Iterator<String> iter = link_serverinfo.dead_servers.iterator();
 		
 		while ( iter.hasNext() ){
@@ -116,23 +138,37 @@ public class RepairServiceRunnable implements Runnable {
 			if ( check.CreateConnection( url, SysValues.STATUS_PORT ) != 0){
 				// Still likely dead
 				check.CloseConnection();
-				return;
+				continue;
 			}
 			
 			check.SendMessage("{\"status\":true}");
 			String finalstr = check.ReceiveMessage(SysValues.LISTEN_TIMEOUT );
 			if ( finalstr == null ){
 				// Still likely dead
-				return;
+				continue;
 			}
 			check.CloseConnection();
 
 			
 			// If we get here -- they responded to our "ping". They are likely alive again.
-			link_serverinfo.dead_servers.remove(url);
-			link_serverinfo.addToGraceList(url);
-			broadcast("Adding " + url + " to grace list as per Repair.");
+			//link_serverinfo.dead_servers.remove(url);
+			// TODO: give them any data that we have that they need?
+			iter.remove();
+			//link_serverinfo.addToGraceList(url);
+			//broadcast("Adding " + url + " to grace list as per Repair.");
 		}
-		
 	}
+	
+	/**
+	 * 		A quick multicast to detemerine the status of all the other nodes.
+	 */
+	private void checkAll ( ){
+		
+		for ( int i = 0; i < link_serverinfo.servers.length(); i++ ){
+			try {
+				this.checkIfDead( link_serverinfo.servers.getString(i));
+			} catch (JSONException e) {}
+		}
+	}
+	
 }

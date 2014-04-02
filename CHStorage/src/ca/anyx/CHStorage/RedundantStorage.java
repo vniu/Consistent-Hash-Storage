@@ -9,6 +9,7 @@ import org.json.JSONObject;
  * 
  * 		Will now have a JSONArray in place of the value,
  * 		containing the value at index 0, and the intended location at index 1.
+ * 		Will also put the replica level at index 2.
  * 
  * 		Should only be used with Redundancy enabled (or else intended location will not exist).
  * 		Will simply put "unknown" if intended location does not exist.
@@ -34,10 +35,17 @@ public class RedundantStorage extends DataStorage {
 		//this.storage.put( putrequest.getString( "key" ), putrequest.get( "value" ) );
 		JSONArray ja = new JSONArray();
 		ja.put( 0, putrequest.get( "value" ) );
+		
 		if (putrequest.has( "intended_location" )){
 			ja.put( 1, putrequest.get( "intended_location" ) );
 		}else{
 			ja.put( 1, "unknown" );
+		}
+		
+		if (putrequest.has( "replica_num" )){
+			ja.put( 2, putrequest.getInt( "replica_num" ) );
+		}else{
+			ja.put( 2, -1 );
 		}
 			
 		this.storage.put( putrequest.getString( "key" ), ja );

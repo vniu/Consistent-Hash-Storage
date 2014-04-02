@@ -1,5 +1,7 @@
 package ca.anyx.CHStorage;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -11,7 +13,9 @@ public class RedundancyRunnable { //implements Runnable {
 	private int[] responsecodes;		// An array of all current ErrorCodes from the responses: Should be populated with -1 if no response yet.
 
 	private JSONObject message;
-	private ServerListsInfo link_serverinfo;
+	private ServerListsInfo link_serverinfo;	
+	private FinalizeRunnable link_finalizer;
+	private NodeMaster NM;
 
 	// Keep track of locations we send to -- if we try to send to the same location with this instance, we have lost a level of redundancy.
 	Vector<String> sentLocations = new Vector<String>();
@@ -28,8 +32,10 @@ public class RedundancyRunnable { //implements Runnable {
 	 * @param _agreed_response	The response will be appended to this vector.
 	 * @param _message			The message to send to the redundant servers
 	 * @param serverinfo	Server info ( To gather servers, or update dead servers )
+	 * @param finalizer 	The finalizer thread
+	 * @param _nodeMaster 	Calling nodemaster
 	 */
-	RedundancyRunnable( Vector<JSONObject> _agreed_response, JSONObject _message, ServerListsInfo serverinfo ){
+	RedundancyRunnable( Vector<JSONObject> _agreed_response, JSONObject _message, ServerListsInfo serverinfo, FinalizeRunnable finalizer, NodeMaster _nodeMaster ){
 
 		responsecodes = new int[SysValues.REDUNDANCY_LEVEL];
 		for ( int i = 0; i < SysValues.REDUNDANCY_LEVEL; i++){
@@ -38,6 +44,8 @@ public class RedundancyRunnable { //implements Runnable {
 		this.agreed_response = _agreed_response;
 		this.message = _message;
 		this.link_serverinfo = serverinfo;
+		this.link_finalizer = finalizer;
+		this.NM = _nodeMaster;
 
 		try {
 			this.message.put("internal", true);// Notify of internal connection or else we get recursion
@@ -45,7 +53,7 @@ public class RedundancyRunnable { //implements Runnable {
 
 	}
 
-	private void broadcast( String m ){
+	private static void broadcast( String m ){
 		if ( !SysValues.DEBUG ) return;
 		// Add in thread ID so we can see who's who
 		String ID = Long.toString( Thread.currentThread().getId() ); 
@@ -73,7 +81,12 @@ public class RedundancyRunnable { //implements Runnable {
 		broadcast("Remaining open connections: " + Integer.toString(open_connections.size()));
 
 		// Any remaining connections (maybe dead, maybe slow), should be finalized. 
-		finalizeSockets(open_connections); //TODO: Maybe make just this part a separate thread?
+		if (SysValues.EXPERIMENTAL_FINALIZER){
+			RequestObject ro = new RequestObject (open_connections, this.message, this.sentLocations );
+			link_finalizer.add_to_finalize.add(ro);
+		}else{
+			finalizeSockets(open_connections); //TODO: Maybe make just this part a separate thread?
+		}
 		
 		return;
 	}
@@ -85,6 +98,12 @@ public class RedundancyRunnable { //implements Runnable {
 	 * @param open_connections	The connections to read from.
 	 */
 	void getAgreed ( Vector<SocketHelper> open_connections ){
+		
+		String my_url = null;
+		try {
+			InetAddress iAddress = InetAddress.getLocalHost();
+			my_url = iAddress.getHostName();
+		} catch (UnknownHostException e) {}
 		
 		// Initial states
 		Boolean have_agreement = false;
@@ -113,6 +132,25 @@ public class RedundancyRunnable { //implements Runnable {
 			Iterator<SocketHelper> iter = open_connections.iterator();
 			while( iter.hasNext() ){
 				SocketHelper working_sh = iter.next();
+				
+				if (my_url != null && my_url == working_sh.myURL){
+					iter.remove();
+					JSONObject resp = NM.keycommand(message);
+					responses.add(resp);
+					try {
+						responsecodes[responsecount] = resp.getInt("ErrorCode");
+					} catch (JSONException e) {} // Internal system -- won't get here
+					responsecount++;		// Add to our information the response and code
+					if ( mode(responsecodes)[1] >= SysValues.MOFN_REDUNDANT ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){  <-- Old way, where m is defined as 'half'
+
+						agreed_response.add( resp ); // If the mode just became acceptable, the latest response must be part of the mode
+						have_agreement = true;
+						break;
+					}
+					continue;
+				}
+				
+				
 				String str = working_sh.ReceiveMessage(0); // Check immediately, without waiting, for a message, and if its null just move on
 				if ( str == null ) continue;
 
@@ -152,6 +190,10 @@ public class RedundancyRunnable { //implements Runnable {
 		return;
 	}
 
+	
+	Vector<SocketHelper> openRequests ( int offsetFirst, int replicas, int JumpFactor){
+		return openRequests(offsetFirst, replicas, JumpFactor, this.message, this.link_serverinfo, this.sentLocations);
+	}
 	/**
 	 * 		Creates connections to the first replicas, and sends the message.
 	 * 		If a server is realized to be dead in this function, it is incremented by the JumpFactor,
@@ -162,39 +204,49 @@ public class RedundancyRunnable { //implements Runnable {
 	 * @param offsetFirst	Where to start the first replica creation. Should only be used for one specific target destination.
 	 * @param replicas		Amount of replicas to create in this instance
 	 * @param JumpFactor	How much to skip over on failure (should be = replicas)
+	 * @param message		The message being sent.
+	 * @param link_serverinfo	The link to the server information
+	 * @param sentLocations		Where we have already sent with this message.
 	 * @return				The created open connections, one for each replica being created
 	 */
-	Vector<SocketHelper> openRequests ( int offsetFirst, int replicas, int JumpFactor ){
+	static Vector<SocketHelper> openRequests ( int offsetFirst, int replicas, int JumpFactor, JSONObject message, ServerListsInfo link_serverinfo, Vector<String> sentLocations ){
 		Vector<SocketHelper> shs = new Vector<SocketHelper>();	// An array of socket connections (using the helper)
+		
+		String my_url = null;
+		try {
+			InetAddress iAddress = InetAddress.getLocalHost();
+			my_url = iAddress.getHostName();
+		} catch (UnknownHostException e) {} // Ignore, just misses a bit of optimization
 
 		try {
 			// Initialize the connection across all redundant locations
 			for ( int i = (0+offsetFirst); i < (replicas+offsetFirst); i++){
 
-				int location = NodeMaster.mapto ( this.message.getString("key"), link_serverinfo.servers );	// Get the initial location via Consistent Hashing
+				int location = NodeMaster.mapto ( message.getString("key"), link_serverinfo.servers );	// Get the initial location via Consistent Hashing
 
 				//increment location based off which redundancy we are
-				location = incrementLocBy( location, i );
+				location = incrementLocBy( location, i, link_serverinfo.servers.length() );
 
 				// Get the current url
 				String redundanturl = link_serverinfo.servers.getString(location); 
 
 				//Let it be known the intended location of this info
-				this.message.put("intended_location", redundanturl);
+				message.put("intended_location", redundanturl);
+				message.put("replica_num", i);
 
 				// Check against the dead servers for the current url -> if it is dead, skip it.
 				int increments = 0;
 				while ( link_serverinfo.dead_servers.contains( redundanturl ) ){
 					broadcast("Skipping dead URL: " + redundanturl );
 
-					location = incrementLocBy( location, JumpFactor ); // increment to the next subset of size redundancylevel 
+					location = incrementLocBy( location, JumpFactor, link_serverinfo.servers.length() ); // increment to the next subset of size redundancylevel 
 					increments += JumpFactor;
 					if ( increments >= link_serverinfo.servers.length() ){
 						// looped ALL the way around the nodes? uh oh
 						broadcast("WARN: Looped around nodes: losing a level of redundancy!");
 						// just put the intended location in
-						location = NodeMaster.mapto ( this.message.getString("key"), link_serverinfo.servers );
-						location = incrementLocBy( location, i );
+						location = NodeMaster.mapto ( message.getString("key"), link_serverinfo.servers );
+						location = incrementLocBy( location, i, link_serverinfo.servers.length() );
 						redundanturl = link_serverinfo.servers.getString(location);
 						break;
 					}
@@ -213,6 +265,14 @@ public class RedundancyRunnable { //implements Runnable {
 				SocketHelper sh = new SocketHelper();	
 				sh.replica_number = i;
 				
+				if (my_url != null && my_url == redundanturl){
+					// Don't bother opening the socket
+					sh.myURL = my_url;
+					shs.add( sh );
+					sentLocations.add(redundanturl);
+					continue; 
+				}
+				
 				int status = sh.CreateConnection(redundanturl, SysValues.INTERNAL_PORT); // Make an internal connection to the url
 				if (status != 0){
 					// create connection fail!
@@ -223,9 +283,9 @@ public class RedundancyRunnable { //implements Runnable {
 					continue; // Try this iteration again with new dead server info
 				}
 
-				sh.SendMessage( this.message.toString() );	// Send the url the command message
+				sh.SendMessage( message.toString() );	// Send the url the command message
 				shs.add( sh );	// Add to the vector of connections for when we check for responses
-				this.sentLocations.add(redundanturl);
+				sentLocations.add(redundanturl);
 			}
 
 		} catch (JSONException e) {		// If we get here then the response is bad -- this would be an internal failure of the program
@@ -244,26 +304,36 @@ public class RedundancyRunnable { //implements Runnable {
 	 * 
 	 * @param loc		The location to update
 	 * @param amount	How many times to increment the location by
+	 * @param len		The server list length
 	 * @return			The updated location
 	 */
-	public int incrementLocBy( int loc, int amount ){
+	static public int incrementLocBy( int loc, int amount, int len ){
 		for (int i = 0; i < amount; i++){
 			loc++;
-			if ( loc == link_serverinfo.servers.length() ) // Ensure we loop around the servers properly
+			if ( loc == len ) // Ensure we loop around the servers properly
 				loc = 0;
 		}
 		return loc;
 	}
 
+	
+	
+	void finalizeSockets(Vector<SocketHelper> shs){
+		finalizeSockets( this.link_serverinfo, shs, this.message, this.sentLocations);
+	}
 	/**
 	 * 		Attempts to finalize connects that are open ( useful after an agreed response was reached )
 	 * 		Is responsible for propagating if there was a failed message.
 	 * 
 	 * 		Will discard any message that gets recieved, or adds the url to the dead list if it fails.
 	 * 
-	 * @param shs	The open socket helpers.
+	 * @param link_serverinfo	The server info, for the dead server list.
+	 * @param shs				The open socket helpers.
+	 * @param message			The message being sent.
+	 * @param sentLocations		Where we have already sent with this message.
+	 * 
 	 */
-	void finalizeSockets( Vector<SocketHelper> shs ){
+	static void finalizeSockets( ServerListsInfo link_serverinfo, Vector<SocketHelper> shs, JSONObject message, Vector<String> sentLocations ){
 		
 		if (shs.size() == 0 ) return; // Nothing to do!
 		
@@ -344,10 +414,10 @@ public class RedundancyRunnable { //implements Runnable {
 			
 			// Since we have a replica amount of 1, the add all call will actually only add one open SocketHelper to the combined.
 			// Note the jump factor must be the original jump factor -- in this case, the redundancy level.
-			combined_new.addAll( this.openRequests(replica_number, 1, SysValues.REDUNDANCY_LEVEL) );
+			combined_new.addAll( openRequests(replica_number, 1, SysValues.REDUNDANCY_LEVEL, message, link_serverinfo, sentLocations) );
 		}
 		
-		finalizeSockets( combined_new ); // Recursion time, I hope this works.
+		finalizeSockets( link_serverinfo, combined_new, message, sentLocations ); // Recursion time, I hope this works.
 	}
 
 	/**

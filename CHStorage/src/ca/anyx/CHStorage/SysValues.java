@@ -1,7 +1,7 @@
 package ca.anyx.CHStorage;
 
 public class SysValues {	//TODO: Change all these from hardcoded? Load from text file perhaps?
-	public final static String VERSION = "4.0.0";
+	public final static String VERSION = "4.1.3";
 	
 	public final static int CLIENT_PORT = 2324; 			
 	public final static int INTERNAL_PORT = 3333; 
@@ -19,11 +19,11 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	 */
 	public final static int MAX_INTERNAL_CONNECTIONS = 125;	
 	
-	/** Allow a client connection to remain open for n seconds from last message. */
-	public final static int LISTEN_TIMEOUT = 5; 				
+	/** Allow a socket connection to remain open for n seconds. */
+	public final static int LISTEN_TIMEOUT = 2; 				
 	
 	/** Amount of seconds to wait before waiting for redundant responses times out */
-	public final static int REDUNDANCY_TIMEOUT = 2;	
+	public final static int REDUNDANCY_TIMEOUT = 1;	
 	
 	/** Used to shut down the program. */
 	public static volatile boolean shutdown = false;
@@ -43,6 +43,9 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	/** The max values that can be stored on this node. */
 	public final static int MAX_STORAGE = 40000;	
 	
+	/** How often to check the repair status of other nodes, seconds */
+	public final static int REPAIR_TIMER = 60;
+	
 	public final static String SERVER_FILE_NAME = "servers.txt";
 	public final static String OUTPUT_FILE_NAME = "index.html";
 	
@@ -53,7 +56,7 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static Boolean DEBUG = true; 	// TODO: Add log option		
 	
 	/** Enable or disable socket read output to stdout (lots of spam!) */
-	public final static Boolean SHOW_VALUES = true;		
+	public final static Boolean SHOW_VALUES = false;		
 	
 	/** INTERNAL_ONLY	will ignore Consistent hashing, store and retrieve only from local storage.
 	  *	FAILOVER_ONLY	will ignore redundancy options, and connect to the next node in the sequence if the connection failed. 
@@ -63,6 +66,8 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	
 	/** Immediately close a connection to a client after we have finished their request
 		In this sense, they must make a new connection to issue their next request. */
-	public final static Boolean FORCE_STOP = true;			
+	public final static Boolean FORCE_STOP = true;		
+	
+	public final static Boolean EXPERIMENTAL_FINALIZER = true;
 	
 }

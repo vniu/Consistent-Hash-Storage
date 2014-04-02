@@ -41,6 +41,7 @@ public class Initiator {
 	public static void main(String[] args) {
 		NodeMaster NM;
 		ServerListsInfo serverinfo;
+		long tick = 0;
 		
 		try {
 			InetAddress iAddress = InetAddress.getLocalHost();
@@ -69,13 +70,13 @@ public class Initiator {
 			
 			NM = new NodeMaster( serverinfo );
 			
-			Thread clientServer = new Thread( new ServerRunnable( NM, SysValues.CLIENT_PORT, SysValues.MAX_CLIENT_CONNECTIONS ) );
+			Thread clientServer = new Thread( new ExecutorServerRunnable( NM, SysValues.CLIENT_PORT, SysValues.MAX_CLIENT_CONNECTIONS ) );
 			clientServer.start(); // One server to accept incoming client connections
 			
-			Thread internalServer = new Thread( new ServerRunnable( NM, SysValues.INTERNAL_PORT, SysValues.MAX_INTERNAL_CONNECTIONS ) );
+			Thread internalServer = new Thread( new ExecutorServerRunnable( NM, SysValues.INTERNAL_PORT, SysValues.MAX_INTERNAL_CONNECTIONS ) );
 			internalServer.start(); // Another server to accept other node connections, i.e. internal connections
 
-			Thread statusServer = new Thread( new ServerRunnable( NM, SysValues.STATUS_PORT, 1 ) );
+			Thread statusServer = new Thread( new ExecutorServerRunnable( NM, SysValues.STATUS_PORT, 2 ) );
 			statusServer.start(); // Another server for status updates
 			
 		}catch (JSONException | IOException e) {
@@ -90,7 +91,8 @@ public class Initiator {
 						new FileOutputStream( SysValues.OUTPUT_FILE_NAME ), "ISO-8859-1"));
 
 				// Write node's storage data to text file for external viewing
-				writer.write( 	"Version: " + SysValues.VERSION + "\n\n" +
+				writer.write( 	"Version: " + SysValues.VERSION + "\n"+
+								"Tick ("+Integer.toString(SysValues.FILE_IO_TIME)+"s): "+ Long.toString(tick) + "\n\n" +
 								"Dead Servers: \n" +
 										serverinfo.dead_servers.toString() + 
 								"\n\n\n" +
@@ -99,6 +101,7 @@ public class Initiator {
 								
 							);
 				writer.close();
+				tick++;
 
 			} catch (IOException | InterruptedException ex) {
 				System.out.println("Couldn't write to file.");

@@ -68,21 +68,25 @@ public class RunnableRequest implements Runnable  {
 		
 		switch( reqnum ){
 		case 0:
-			reqnum ++;
-			if (reqnum > 2) reqnum = 0;
 			lastput++;
-			resp = makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + Integer.toString(lastput) + Thread.currentThread().getId() + "\", \"value\":\"" + SysValues.value + "\"}" );
+			resp = makeRequest( "{\"put\":true,    \"key\":\"" + SysValues.key + Integer.toString(lastput) + Long.toString(Thread.currentThread().getId()) + "\", \"value\":\"" + SysValues.value + "\"}" );
+			if (!resp) lastput--; 
+			break;
 		case 1:
-			reqnum ++;
-			if (reqnum > 2) reqnum = 0;
-			resp = makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + Integer.toString(lastput) + Thread.currentThread().getId() + "\"}" );
+
+			resp = makeRequest( "{\"get\":true,    \"key\":\"" + SysValues.key + Integer.toString(lastput) + Long.toString(Thread.currentThread().getId()) + "\"}" );
+			break;
 		default:
-			reqnum ++;
-			if (reqnum > 2) reqnum = 0;
-			resp = makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + Integer.toString(lastput) + Thread.currentThread().getId() + "\"}" );
+
+			resp = makeRequest( "{\"remove\":true, \"key\":\"" + SysValues.key + Integer.toString(lastput) + Long.toString(Thread.currentThread().getId()) + "\"}" );
+			break;
 		}
 		
-		if ( resp == false ) reqnum = 0;
+		reqnum ++;
+		if ( resp == false ) reqnum--;
+		if (reqnum > 2) reqnum = 0;
+		
+		
 		return resp;
 	}
 	
