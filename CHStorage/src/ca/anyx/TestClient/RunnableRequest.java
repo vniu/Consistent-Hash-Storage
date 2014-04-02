@@ -83,7 +83,7 @@ public class RunnableRequest implements Runnable  {
 		}
 		
 		reqnum ++;
-		if ( resp == false ) reqnum--;
+		if ( resp == false ) reqnum = 0;
 		if (reqnum > 2) reqnum = 0;
 		
 		

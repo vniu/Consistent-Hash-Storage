@@ -1,7 +1,7 @@
 package ca.anyx.CHStorage;
 
 public class SysValues {	//TODO: Change all these from hardcoded? Load from text file perhaps?
-	public final static String VERSION = "4.1.3";
+	public final static String VERSION = "4.1.5";
 	
 	public final static int CLIENT_PORT = 2324; 			
 	public final static int INTERNAL_PORT = 3333; 
@@ -68,6 +68,6 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 		In this sense, they must make a new connection to issue their next request. */
 	public final static Boolean FORCE_STOP = true;		
 	
-	public final static Boolean EXPERIMENTAL_FINALIZER = true;
+	public final static Boolean EXPERIMENTAL_FINALIZER = false;
 	
 }

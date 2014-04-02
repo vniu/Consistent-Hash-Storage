@@ -71,6 +71,10 @@ public class NodeMaster {
 		}else if( j.has("status") ){
 			return DataStorage.craftResponse(200);	// Recieved the status check - reply OK
 
+		}else if( j.has("dump") ){
+			this.my_storage.storage = new JSONObject();
+			return DataStorage.craftResponse(200);	// Dump the internal storage - reply OK
+
 		}else if ( j.has("internal") == false ){
 			// Externalize the command
 			return this.sendmessageremote( j );
