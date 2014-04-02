@@ -14,7 +14,9 @@ public class RequestObject {
 	long startTime;
 	
 	/**
-	 *		Default construction...
+	 *		Default construction: The object is created and will contain the time that it
+	 *		was originally created at.
+	 *
 	 * @param _shs			 The sockethelpers in the object
 	 * @param _message		 The message intended for these connections
 	 * @param _sentLocations Any locations that have already been sent to with this message

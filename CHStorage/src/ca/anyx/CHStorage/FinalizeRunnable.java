@@ -48,6 +48,7 @@ public class FinalizeRunnable implements Runnable {
 				continue;
 			}
 
+			//TODO: Is this opening too many concurrent connections?
 			working_finalize.addAll( failed_replicas );
 			failed_replicas.clear();
 
