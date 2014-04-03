@@ -144,6 +144,17 @@ public class RedundancyRunnable { //implements Runnable {
 						responsecodes[responsecount] = resp.getInt("ErrorCode");
 					} catch (JSONException e) {} // Internal system -- won't get here
 					responsecount++;		// Add to our information the response and code
+					
+					if (SysValues.EXPERIMENTAL_ANY_SUCCESS){
+						try {
+							if ( resp.getInt("ErrorCode") == 0 ){
+								agreed_response.add( resp ); // If the mode just became acceptable, the latest response must be part of the mode
+								have_agreement = true;
+								break;
+							}
+						} catch (JSONException e) {}
+					}
+					
 					if ( mode(responsecodes)[1] >= SysValues.MOFN_REDUNDANT ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){  <-- Old way, where m is defined as 'half'
 
 						agreed_response.add( resp ); // If the mode just became acceptable, the latest response must be part of the mode
@@ -172,7 +183,15 @@ public class RedundancyRunnable { //implements Runnable {
 					link_serverinfo.addToGraceList( working_sh.myURL );
 
 					// Check for a valid agreement -- m values (a mode) of the n redundant servers must agree
-
+					
+					if (SysValues.EXPERIMENTAL_ANY_SUCCESS){
+						if ( resp.getInt("ErrorCode") == 0 ){
+							agreed_response.add( resp ); // If the mode just became acceptable, the latest response must be part of the mode
+							have_agreement = true;
+							break;
+						}
+					}
+					
 					if ( mode(responsecodes)[1] >= SysValues.MOFN_REDUNDANT ){   //Math.ceil( ((double)SysValues.redundancylevel)/2) ){  <-- Old way, where m is defined as 'half'
 
 						agreed_response.add( resp ); // If the mode just became acceptable, the latest response must be part of the mode
@@ -222,6 +241,7 @@ public class RedundancyRunnable { //implements Runnable {
 		} catch (UnknownHostException e) {} // Ignore, just misses a bit of optimization
 
 		try {
+			Vector<ReplicaObject> to_launch = new Vector<ReplicaObject>();
 			// Initialize the connection across all redundant locations
 			for ( int i = (0+offsetFirst); i < (replicas+offsetFirst); i++){
 
@@ -232,17 +252,19 @@ public class RedundancyRunnable { //implements Runnable {
 
 				// Get the current url
 				String redundanturl = link_serverinfo.servers.getString(location); 
-
+				
 				//Let it be known the intended location of this info
-				message.put("intended_location", redundanturl);
-				message.put("replica_num", i);
-				message.put("is_intended", true);
+				ReplicaObject this_launch = new ReplicaObject(redundanturl, i, true);
+				//message.put("intended_location", redundanturl);
+				//message.put("replica_num", i);
+				//message.put("is_intended", true);
 
 				// Check against the dead servers for the current url -> if it is dead, skip it.
 				int increments = 0;
 				while ( link_serverinfo.dead_servers.contains( redundanturl ) ){
 					broadcast("Skipping dead URL: " + redundanturl );
-					message.put("is_intended", false);
+					this_launch.is_intended = false;
+					//message.put("is_intended", false);
 					
 					location = incrementLocBy( location, JumpFactor, link_serverinfo.servers.length() ); // increment to the next subset of size redundancylevel 
 					increments += JumpFactor;
@@ -266,9 +288,12 @@ public class RedundancyRunnable { //implements Runnable {
 					broadcast("WARN: Attempted to send to the same location more than once: losing a level of redundancy!");
 					continue;
 				}
-
+				
+				message.put( ("rep_loc_"+Integer.toString(i)), redundanturl);
+				this_launch.actual_location = redundanturl;
+				
 				SocketHelper sh = new SocketHelper();	
-				sh.replica_number = i;
+				sh.replica_number = i;// ro.replica_num;
 				
 				if (my_url != null && my_url == redundanturl){
 					// Don't bother opening the socket
@@ -287,17 +312,51 @@ public class RedundancyRunnable { //implements Runnable {
 					i--;
 					continue; // Try this iteration again with new dead server info
 				}
-
-				sh.SendMessage( message.toString() );	// Send the url the command message
-				shs.add( sh );	// Add to the vector of connections for when we check for responses
 				sentLocations.add(redundanturl);
+				
+				//Connection okay, add to list of targets to send to
+				this_launch.sh = sh;
+				to_launch.add(this_launch);
+				
 			}
+			
+			//send to all targets
+			Iterator<ReplicaObject> temp = to_launch.iterator();
+			while (temp.hasNext() ){
+				ReplicaObject ro = temp.next();
+				
+				message.put("intended_location", ro.intended_location);
+				message.put("replica_num", ro.replica_num);
+				message.put("is_intended", ro.is_intended);
+				
+				ro.sh.SendMessage( message.toString() );	// Send the url the command message
+				shs.add( ro.sh );	// Add to the vector of connections for when we check for responses
+			}
+					
 
 		} catch (JSONException e) {		// If we get here then the response is bad -- this would be an internal failure of the program
 			broadcast("Couldn't map to a location? Did not include key? Redundancy Req.");
 			return null;
 		}
 		return shs;
+	}
+	
+	/**
+	 *  Simple 'struct' to store some data
+	 */
+	static class ReplicaObject{
+		String intended_location;
+		int replica_num;
+		boolean is_intended;
+		SocketHelper sh;
+		
+		String actual_location;
+		
+		ReplicaObject( String _intended_location, int _replica_num, boolean _is_intended){
+			this.intended_location = _intended_location;
+			this.replica_num = _replica_num;
+			this.is_intended = _is_intended;
+		}
 	}
 
 

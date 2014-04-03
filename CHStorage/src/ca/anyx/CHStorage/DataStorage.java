@@ -30,7 +30,7 @@ public class DataStorage {
 	 */
 	public synchronized String getStorageString(){
 		try {
-			return this.storage.toString(5);
+			return this.storage.toString(3);
 		} catch (JSONException e) {
 			return "";
 		}

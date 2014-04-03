@@ -32,7 +32,7 @@ public class NodeMaster {
 		
 		if (SysValues.STORAGE_STRATEGY == StorageStrategy.REDUNDANCY){
 			my_storage = new RedundantStorage();
-			NodeStatus = new Thread ( new RepairServiceRunnable( link_serverinfo, this.my_storage ) );
+			NodeStatus = new Thread ( new RepairServiceRunnable( link_serverinfo, this.my_storage, this ) );
 			NodeStatus.start();
 		}else{
 			my_storage = new DataStorage();

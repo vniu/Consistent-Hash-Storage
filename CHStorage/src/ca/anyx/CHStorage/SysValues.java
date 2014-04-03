@@ -1,7 +1,7 @@
 package ca.anyx.CHStorage;
 
 public class SysValues {	//TODO: Change all these from hardcoded? Load from text file perhaps?
-	public final static String VERSION = "4.1.12";
+	public final static String VERSION = "4.2.2";
 	
 	public final static int CLIENT_PORT = 2324; 			
 	public final static int INTERNAL_PORT = 3333; 
@@ -26,7 +26,7 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static int REDUNDANCY_TIMEOUT = 2;	
 	
 	/** Write file to disk every n seconds. */
-	public final static int FILE_IO_TIME = 5; 				
+	public final static int FILE_IO_TIME = 1; 				
 	
 	/** Store data on n servers. This includes the first server to be mapped to! So a value of 1 is "not redundant". */
 	public final static int REDUNDANCY_LEVEL = 3;			
@@ -41,7 +41,7 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static int MAX_STORAGE = 40000;	
 	
 	/** How often to check the repair status of other nodes, seconds */
-	public final static int REPAIR_TIMER = 60;
+	public final static int REPAIR_TIMER = 10;
 	
 	public final static String SERVER_FILE_NAME = "servers.txt";
 	public final static String OUTPUT_FILE_NAME = "index.html";
@@ -71,5 +71,6 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static Boolean FORCE_STOP = true;		
 	
 	public final static Boolean EXPERIMENTAL_FINALIZER = false;
+	public final static Boolean EXPERIMENTAL_ANY_SUCCESS = true;
 	
 }

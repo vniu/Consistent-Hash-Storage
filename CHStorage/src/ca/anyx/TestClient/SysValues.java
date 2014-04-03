@@ -3,10 +3,10 @@ package ca.anyx.TestClient;
 public class SysValues {
 	//TODO load from text file?
 	
-	final static int threadcount = 100;
-	final static int tests_per_thread = 100;
+	final static int threadcount = 50;
+	final static int tests_per_thread = 300;
 	//final static String url = "planetlab04.cs.washington.edu";
-	final static String url = "planetlab1.cs.uoregon.edu";
+	final static String url = "planetlab2.cs.ubc.ca";
 	//final static String url = "planetlab2.cs.columbia.edu";
 	//final static String url = "anyx.ca";
 	final static int port = 2324;

@@ -93,9 +93,9 @@ public class Initiator {
 				// Write node's storage data to text file for external viewing
 				writer.write( 	"Version: " + SysValues.VERSION + "\n"+
 								"Web update tick ("+Integer.toString(SysValues.FILE_IO_TIME)+"s): "+ Long.toString(tick) + "\n"+
-								"Repairs ran(limit 1 per " + Integer.toString(SysValues.REPAIR_TIMER) + "s): " + Integer.toString(SysValues.repairs_ran) + "\n"+
+								"Repairs ran (limit 1 per " + Integer.toString(SysValues.REPAIR_TIMER) + "s): " + Integer.toString(SysValues.repairs_ran) + "\n"+
 								"\n\n" +
-								"Format: { \"key\":[\"value\", \"intended_location\", \"replication_level\", \"is_intended_location\"] . . . }" +"\n"+
+								"Format: { \"key\":[\"value\", \"intended_location\", \"replication_level\", \"is_intended_location\", \"replica_location_0\" . . . \"replica_location_MAX\" ] . . . }" +"\n"+
 								"\n\n" +
 								"Dead Servers: \n" +
 										serverinfo.dead_servers.toString() + 

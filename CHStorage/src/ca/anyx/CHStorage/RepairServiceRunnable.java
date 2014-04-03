@@ -12,11 +12,13 @@ public class RepairServiceRunnable implements Runnable {
 	public Vector<String> potentially_dead;
 	private ServerListsInfo link_serverinfo;
 	private DataStorage link_storage;
+	private NodeMaster link_nodemaster;
 
-	RepairServiceRunnable( ServerListsInfo serverinfo, DataStorage storage ){
+	RepairServiceRunnable( ServerListsInfo serverinfo, DataStorage storage, NodeMaster nodemaster ){
 		potentially_dead= new Vector<String>();
 		this.link_serverinfo = serverinfo;
 		this.link_storage = storage;
+		this.link_nodemaster = nodemaster;
 	}
 
 	private void broadcast( String m ){
@@ -60,6 +62,7 @@ public class RepairServiceRunnable implements Runnable {
 						removeUneccessaryKeys( unneccessary );
 						state = 0;
 					}
+					fixBrokenKeys();
 					readyup = false;
 					SysValues.repairs_ran++;
 				}
@@ -209,6 +212,7 @@ public class RepairServiceRunnable implements Runnable {
 						// not in the dead list -- the server is back alive.
 						// we do not to keep the data, no one will ever ask us for it
 						//iter.remove();
+						//TODO: Possibly offer this to the newly alive server?
 						to_remove.add( key );
 					}
 
@@ -234,6 +238,35 @@ public class RepairServiceRunnable implements Runnable {
 				this.link_storage.storagecount--;
 			} catch (JSONException e) {
 				// ignore, we don't care
+			}
+		}
+	}
+	
+	private void fixBrokenKeys(){
+		if (link_storage == null || this.link_storage.storage == null ) return;
+		
+		Iterator<?> iter = this.link_storage.storage.keys();
+
+		while (iter.hasNext() ){
+			String key = (String) iter.next();
+			try {
+				JSONArray working_ja = this.link_storage.storage.getJSONArray(key);
+				
+				// TODO: Not hardcoded to 3
+				if (		this.link_serverinfo.dead_servers.contains(working_ja.getString(4)) 
+						||  this.link_serverinfo.dead_servers.contains(working_ja.getString(5)) 
+						||  this.link_serverinfo.dead_servers.contains(working_ja.getString(6)) 
+						){
+					JSONObject newReq = new JSONObject();
+					newReq.put("put", true);
+					newReq.put("key", key);
+					newReq.put("value", working_ja.getString(0));
+					
+					this.link_nodemaster.keycommand(newReq); // try to update the system
+				}
+					
+			} catch (JSONException e) {
+				continue; // shouldn't get here
 			}
 		}
 	}

@@ -53,6 +53,23 @@ public class RedundantStorage extends DataStorage {
 		}else{
 			ja.put( 3, -1 );
 		}
+		
+		//TODO: not only 3 hardcoded
+		if (putrequest.has( "rep_loc_0" )){
+			ja.put( 4, putrequest.get( "rep_loc_0" ) );
+		}else{
+			ja.put( 4, "unknown" );
+		}
+		if (putrequest.has( "rep_loc_1" )){
+			ja.put( 5, putrequest.get( "rep_loc_1" ) );
+		}else{
+			ja.put( 5, "unknown" );
+		}
+		if (putrequest.has( "rep_loc_2" )){
+			ja.put( 6, putrequest.get( "rep_loc_2" ) );
+		}else{
+			ja.put( 6, "unknown" );
+		}
 			
 		this.storage.put( putrequest.getString( "key" ), ja );
 	}
