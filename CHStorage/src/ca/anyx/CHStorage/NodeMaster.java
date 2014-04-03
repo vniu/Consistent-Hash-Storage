@@ -30,13 +30,14 @@ public class NodeMaster {
 	public NodeMaster( ServerListsInfo serverinfo ) {
 		link_serverinfo = serverinfo;
 		
-		if (SysValues.STORAGE_STRATEGY == StorageStrategy.REDUNDANCY)
+		if (SysValues.STORAGE_STRATEGY == StorageStrategy.REDUNDANCY){
 			my_storage = new RedundantStorage();
-		else
+			NodeStatus = new Thread ( new RepairServiceRunnable( link_serverinfo, this.my_storage ) );
+			NodeStatus.start();
+		}else{
 			my_storage = new DataStorage();
+		}
 		
-		NodeStatus = new Thread ( new RepairServiceRunnable( link_serverinfo ) );
-		NodeStatus.start();
 		
 		finalizer = new FinalizeRunnable( link_serverinfo );
 		
@@ -73,6 +74,7 @@ public class NodeMaster {
 
 		}else if( j.has("dump") ){
 			this.my_storage.storage = new JSONObject();
+			this.my_storage.storagecount = 0;
 			return DataStorage.craftResponse(200);	// Dump the internal storage - reply OK
 
 		}else if ( j.has("internal") == false ){

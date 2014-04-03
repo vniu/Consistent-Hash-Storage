@@ -1,7 +1,7 @@
 package ca.anyx.CHStorage;
 
 public class SysValues {	//TODO: Change all these from hardcoded? Load from text file perhaps?
-	public final static String VERSION = "4.1.5";
+	public final static String VERSION = "4.1.12";
 	
 	public final static int CLIENT_PORT = 2324; 			
 	public final static int INTERNAL_PORT = 3333; 
@@ -20,13 +20,10 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	public final static int MAX_INTERNAL_CONNECTIONS = 125;	
 	
 	/** Allow a socket connection to remain open for n seconds. */
-	public final static int LISTEN_TIMEOUT = 2; 				
+	public final static int LISTEN_TIMEOUT = 5; 				
 	
 	/** Amount of seconds to wait before waiting for redundant responses times out */
-	public final static int REDUNDANCY_TIMEOUT = 1;	
-	
-	/** Used to shut down the program. */
-	public static volatile boolean shutdown = false;
+	public final static int REDUNDANCY_TIMEOUT = 2;	
 	
 	/** Write file to disk every n seconds. */
 	public final static int FILE_IO_TIME = 5; 				
@@ -48,6 +45,11 @@ public class SysValues {	//TODO: Change all these from hardcoded? Load from text
 	
 	public final static String SERVER_FILE_NAME = "servers.txt";
 	public final static String OUTPUT_FILE_NAME = "index.html";
+	
+	/** Used to shut down the program. */
+	public static volatile boolean shutdown = false;
+	
+	public static volatile int repairs_ran = 0;
 	
 	
 	//Debug options

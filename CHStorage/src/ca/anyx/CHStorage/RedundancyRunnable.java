@@ -85,7 +85,10 @@ public class RedundancyRunnable { //implements Runnable {
 			RequestObject ro = new RequestObject (open_connections, this.message, this.sentLocations );
 			link_finalizer.add_to_finalize.add(ro);
 		}else{
-			finalizeSockets(open_connections); //TODO: Maybe make just this part a separate thread?
+			if (this.message.has("get")){		// We don't need to ensure replication of get requests
+				cleanSockets(open_connections);
+			}else
+				finalizeSockets(open_connections); //TODO: Maybe make just this part a separate thread?
 		}
 		
 		return;
@@ -233,12 +236,14 @@ public class RedundancyRunnable { //implements Runnable {
 				//Let it be known the intended location of this info
 				message.put("intended_location", redundanturl);
 				message.put("replica_num", i);
+				message.put("is_intended", true);
 
 				// Check against the dead servers for the current url -> if it is dead, skip it.
 				int increments = 0;
 				while ( link_serverinfo.dead_servers.contains( redundanturl ) ){
 					broadcast("Skipping dead URL: " + redundanturl );
-
+					message.put("is_intended", false);
+					
 					location = incrementLocBy( location, JumpFactor, link_serverinfo.servers.length() ); // increment to the next subset of size redundancylevel 
 					increments += JumpFactor;
 					if ( increments >= link_serverinfo.servers.length() ){
@@ -448,13 +453,13 @@ public class RedundancyRunnable { //implements Runnable {
 		return new int[]{maxLocation, maxCount};
 	}
 	
-	/** DEPRECIATED
+	/**
 	 * 		Tell anyone left (has not been removed from the vector) 
 	 * 		that we no longer need their input, and close the connections.
 	 * 
 	 * @param shs	Sockets to clean.
 	 */
-	void DEPRECIATED_cleanSockets( Vector<SocketHelper> shs ){
+	void cleanSockets( Vector<SocketHelper> shs ){
 		//nodemaster.gracelist.addTestURLs(shs);
 
 		Iterator<SocketHelper> cleanup_iter = shs.iterator();

@@ -8,7 +8,7 @@ import org.json.JSONObject;
  */
 public class DataStorage {
 	protected JSONObject storage;
-	private int storagecount = 0;
+	public int storagecount = 0;
 
 	/**
 	 * 	Default construction, just a new JSONObject.

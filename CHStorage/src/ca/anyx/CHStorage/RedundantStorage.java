@@ -47,6 +47,12 @@ public class RedundantStorage extends DataStorage {
 		}else{
 			ja.put( 2, -1 );
 		}
+		
+		if (putrequest.has( "is_intended" )){
+			ja.put( 3, putrequest.getBoolean( "is_intended" ) );
+		}else{
+			ja.put( 3, -1 );
+		}
 			
 		this.storage.put( putrequest.getString( "key" ), ja );
 	}
