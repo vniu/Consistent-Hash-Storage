@@ -49,6 +49,7 @@ public class RepairServiceRunnable implements Runnable {
 			if ( readyup ){
 				// Check to see if we've past the random number between 0 and n seconds, then we do our test.
 				if ( (System.currentTimeMillis() - lastCheck ) >= 1000*nextCheck  ){
+					SysValues.repair_running = true;
 					
 					this.checkAll(); // TODO: WIP, check all servers for status
 					this.attemptRepair();
@@ -65,6 +66,7 @@ public class RepairServiceRunnable implements Runnable {
 					fixBrokenKeys();
 					readyup = false;
 					SysValues.repairs_ran++;
+					SysValues.repair_running = false;
 				}
 			}
 			// If we're past n seconds, ready up the next multicast

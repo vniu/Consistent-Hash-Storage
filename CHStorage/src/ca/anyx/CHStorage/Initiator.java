@@ -91,17 +91,21 @@ public class Initiator {
 						new FileOutputStream( SysValues.OUTPUT_FILE_NAME ), "ISO-8859-1"));
 
 				// Write node's storage data to text file for external viewing
-				writer.write( 	"Version: " + SysValues.VERSION + "\n"+
-								"Web update tick ("+Integer.toString(SysValues.FILE_IO_TIME)+"s): "+ Long.toString(tick) + "\n"+
-								"Repairs ran (limit 1 per " + Integer.toString(SysValues.REPAIR_TIMER) + "s): " + Integer.toString(SysValues.repairs_ran) + "\n"+
-								"\n\n" +
-								"Format: { \"key\":[\"value\", \"intended_location\", \"replication_level\", \"is_intended_location\", \"replica_location_0\" . . . \"replica_location_MAX\" ] . . . }" +"\n"+
-								"\n\n" +
-								"Dead Servers: \n" +
+				writer.write( 	"<html>" +
+								//"<meta http-equiv=\"refresh\" content=\"1\">" +
+								"Version: " + SysValues.VERSION + "\n<br>"+
+								"Web update tick ("+Integer.toString(SysValues.FILE_IO_TIME)+"s): "+ Long.toString(tick) + "\n<br>"+
+								"Repairs ran (limit 1 per " + Integer.toString(SysValues.REPAIR_TIMER) + "s): " + Integer.toString(SysValues.repairs_ran) + 
+								" Repair in progress: " + SysValues.repair_running.toString() + "\n<br>"+
+								"\n\n<br><br>" +
+								"Format: { \"key\":[\"value\", \"intended_location\", \"replication_level\", \"is_intended_location\", \"replica_location_0\" . . . \"replica_location_MAX\" ] . . . }" +"\n<br>"+
+								"\n\n<br><br>" +
+								"Dead Servers: ("+ Integer.toString(serverinfo.dead_servers.size())+" of "+Integer.toString(serverinfo.servers.length())+" servers)"+"\n<br>" +
 										serverinfo.dead_servers.toString() + 
-								"\n\n\n" +
-								"Local Key Value pairs: \n" + 
+								"\n\n\n<br><br><br>" +
+								"Local Key Value pairs: \n<br>" + 
 								NM.my_storage.getStorageString()
+								+ "</html>"
 								
 							);
 				writer.close();
