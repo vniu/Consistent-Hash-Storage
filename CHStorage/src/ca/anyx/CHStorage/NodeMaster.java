@@ -211,7 +211,7 @@ public class NodeMaster {
 			return DataStorage.craftResponse(5);
 		}
 
-		while ( link_serverinfo.dead_servers.contains( url ) ){
+		while ( link_serverinfo.IsServerDead( url ) ){
 			location++;
 			if ( location == link_serverinfo.servers.length() ) // Ensure we loop around the servers properly
 				location = 0;
@@ -237,7 +237,7 @@ public class NodeMaster {
 				}
 			} catch (JSONException e) {
 				// Node CONNECTION was a failure, go to next node.
-				while ( link_serverinfo.dead_servers.contains( url ) ){
+				while ( link_serverinfo.IsServerDead( url ) ){
 					location++;
 					if ( location == link_serverinfo.servers.length() ) // Ensure we loop around the servers properly
 						location = 0;

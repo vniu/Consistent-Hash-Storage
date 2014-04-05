@@ -76,8 +76,9 @@ public class Initiator {
 			Thread internalServer = new Thread( new ExecutorServerRunnable( NM, SysValues.INTERNAL_PORT, SysValues.MAX_INTERNAL_CONNECTIONS ) );
 			internalServer.start(); // Another server to accept other node connections, i.e. internal connections
 
-			Thread statusServer = new Thread( new ExecutorServerRunnable( NM, SysValues.STATUS_PORT, 2 ) );
-			statusServer.start(); // Another server for status updates
+			//Thread statusServer = new Thread( new ExecutorServerRunnable( NM, SysValues.STATUS_PORT, 2 ) );
+			//statusServer.start(); // Another server for status updates
+			// Depreciated with new gossip listener - started by the repair service
 			
 		}catch (JSONException | IOException e) {
 			System.out.println("Error: Check " + SysValues.SERVER_FILE_NAME +  ". Exiting: " + e.getLocalizedMessage());
@@ -100,8 +101,10 @@ public class Initiator {
 								"\n\n<br><br>" +
 								"Format: { \"key\":[\"value\", \"intended_location\", \"replication_level\", \"is_intended_location\", \"replica_location_0\" . . . \"replica_location_MAX\" ] . . . }" +"\n<br>"+
 								"\n\n<br><br>" +
-								"Dead Servers: ("+ Integer.toString(serverinfo.dead_servers.size())+" of "+Integer.toString(serverinfo.servers.length())+" servers)"+"\n<br>" +
-										serverinfo.dead_servers.toString() + 
+								//"Dead Servers: ("+ Integer.toString(serverinfo.dead_servers.size())+" of "+Integer.toString(serverinfo.servers.length())+" servers)"+"\n<br>" +
+								//		serverinfo.dead_servers.toString() + 
+								"Dead Servers: \n" +
+								serverinfo.dead_data.toString(3) +
 								"\n\n\n<br><br><br>" +
 								"Local Key Value pairs: \n<br>" + 
 								NM.my_storage.getStorageString()
@@ -112,6 +115,8 @@ public class Initiator {
 				tick++;
 
 			} catch (IOException | InterruptedException ex) {
+				System.out.println("Couldn't write to file.");
+			} catch (JSONException e) {
 				System.out.println("Couldn't write to file.");
 			}
 		}

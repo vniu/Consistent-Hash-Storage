@@ -261,7 +261,8 @@ public class RedundancyRunnable { //implements Runnable {
 
 				// Check against the dead servers for the current url -> if it is dead, skip it.
 				int increments = 0;
-				while ( link_serverinfo.dead_servers.contains( redundanturl ) ){
+				//while ( link_serverinfo.dead_servers.contains( redundanturl ) ){
+				while ( link_serverinfo.IsServerDead( redundanturl ) ){
 					broadcast("Skipping dead URL: " + redundanturl );
 					this_launch.is_intended = false;
 					//message.put("is_intended", false);
@@ -307,7 +308,8 @@ public class RedundancyRunnable { //implements Runnable {
 				if (status != 0){
 					// create connection fail!
 					broadcast( sh.myURL + "is DEAD! Connection Create fail.");
-					link_serverinfo.dead_servers.add( sh.myURL );
+					//link_serverinfo.dead_servers.add( sh.myURL );
+					link_serverinfo.ListServerDead( sh.myURL );
 					sh.CloseConnection();
 					i--;
 					continue; // Try this iteration again with new dead server info
@@ -415,7 +417,8 @@ public class RedundancyRunnable { //implements Runnable {
 			while ( iter.hasNext() ){
 				SocketHelper working_sh = iter.next();
 
-				if ( link_serverinfo.dead_servers.contains( working_sh.myURL ) ) { 
+				//if ( link_serverinfo.dead_servers.contains( working_sh.myURL ) ) { 
+				if ( link_serverinfo.IsServerDead( working_sh.myURL ) ) {
 					// Already marked as dead --
 					// This could happen if another thread found the url to be dead.
 					failed_replicas.add( working_sh.replica_number );
@@ -451,7 +454,8 @@ public class RedundancyRunnable { //implements Runnable {
 
 			String response = working_sh.ReceiveMessage(0);
 			if ( response == null ){
-				link_serverinfo.dead_servers.add( working_sh.myURL );
+				link_serverinfo.ListServerDead( working_sh.myURL );
+				//link_serverinfo.dead_servers.add( working_sh.myURL );
 
 				failed_replicas.add( working_sh.replica_number );
 			}

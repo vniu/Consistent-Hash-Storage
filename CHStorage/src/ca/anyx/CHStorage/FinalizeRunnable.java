@@ -74,7 +74,8 @@ public class FinalizeRunnable implements Runnable {
 					// add all null responses to the dead list.
 					String response = working_sh.ReceiveMessage(0);
 					if ( response == null ){
-						link_serverinfo.dead_servers.add( working_sh.myURL );
+						//link_serverinfo.dead_servers.add( working_sh.myURL );
+						link_serverinfo.ListServerDead( working_sh.myURL );
 
 						RequestObject new_ro = buildFailed( ro, working_sh.replica_number );
 						failed_replicas.add( new_ro );
@@ -108,7 +109,8 @@ public class FinalizeRunnable implements Runnable {
 			while ( shs_iter.hasNext() ){
 				SocketHelper working_sh = shs_iter.next();
 
-				if ( link_serverinfo.dead_servers.contains( working_sh.myURL ) ) { 
+				//if ( link_serverinfo.dead_servers.contains( working_sh.myURL ) ) { 
+				if ( link_serverinfo.IsServerDead( working_sh.myURL ) ) { 
 					// Already marked as dead --
 					// This could happen if another thread found the url to be dead.
 					RequestObject new_ro =  buildFailed( ro, working_sh.replica_number );
