@@ -311,7 +311,7 @@ public class ServerListsInfo {
 	 * 		Checks if a server is online or offline via our data.
 	 * 
 	 * @param url	The server to look for
-	 * @return		True if online, false if not.
+	 * @return		True if dead, false if alive.
 	 */
 	public boolean IsServerDead ( String url ){
 		try {
@@ -319,13 +319,13 @@ public class ServerListsInfo {
 			int uptime = this.dead_data.getJSONObject(url).getInt("uptime");
 			
 			if ( uptime > 0 ) {
-				return true;
-			}else{
 				return false;
+			}else{
+				return true;
 			}
 			
 		} catch (JSONException e) {
-			return true; // Server not found? Uptime not initialized? Report as dead
+			return false; // Server not found? Uptime not initialized? Return false as we cannot fully say it is dead
 		}
 		
 	}
