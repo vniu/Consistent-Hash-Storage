@@ -13,15 +13,17 @@ public class RepairServiceRunnable implements Runnable {
 	private ServerListsInfo link_serverinfo;
 	private DataStorage link_storage;
 	private NodeMaster link_nodemaster;
+	Thread tgl;
+	GossipListener gl;
 
 	RepairServiceRunnable( ServerListsInfo serverinfo, DataStorage storage, NodeMaster nodemaster ){
 		potentially_dead= new Vector<String>();
 		this.link_serverinfo = serverinfo;
 		this.link_storage = storage;
 		this.link_nodemaster = nodemaster;
-		
-		GossipListener gl = new GossipListener(link_serverinfo, SysValues.STATUS_PORT);
-		Thread tgl = new Thread( gl );
+
+		gl = new GossipListener(link_serverinfo, SysValues.STATUS_PORT);
+		tgl = new Thread( gl );
 		tgl.start();
 	}
 
@@ -42,28 +44,29 @@ public class RepairServiceRunnable implements Runnable {
 
 		while (SysValues.shutdown == false ){
 
-			// Check every second for now TODO: change!
+			// Check every 2 second for now TODO: change!
 			try {
-				Thread.sleep(1000);
+				Thread.sleep(2000);
 			} catch (InterruptedException e) {}
-			
-			boolean newest = this.pollRandom();
-			
-			if ( newest == false ){ // probably a change in the dead server list
+
+			//boolean newest = 
+					this.pollRandom();
+
+			//if ( newest == false ){ // probably a change in the dead server list
 				//unneccessary = this.findUneccessaryKeys();
 				//removeUneccessaryKeys( unneccessary );
 				SysValues.repair_running = true;
 				this.fixBrokenKeys();
-			}
-			
-			
+			//}
+
+
 			// Check the status of other nodes. Will happen randomly once within the given time-frame,
 			// as to hope to avoid all nodes attacking each other at the same time.
 			if ( readyup ){
 				// Check to see if we've past the random number between 0 and n seconds, then we do our test.
 				if ( (System.currentTimeMillis() - lastCheck ) >= 1000*nextCheck  ){
 					SysValues.repair_running = true;
-					
+
 					//this.checkAll(); // TODO: WIP, check all servers for status
 					//this.attemptRepair(); -- moved
 
@@ -89,8 +92,10 @@ public class RepairServiceRunnable implements Runnable {
 				nextCheck = rng.nextInt(SysValues.REPAIR_TIMER);
 				readyup = true;
 			}
-			
-			
+
+			//assert (this.tgl.isAlive()) : "Gossip listener DEAD!";
+
+
 
 
 			// Try and recieve from the connections that were ignored?
@@ -117,7 +122,7 @@ public class RepairServiceRunnable implements Runnable {
 					continue;
 				}
 			}
-			*/
+			 */
 		}
 
 	}
@@ -200,9 +205,9 @@ public class RepairServiceRunnable implements Runnable {
 			//broadcast("Adding " + url + " to grace list as per Repair.");
 		}
 	}
-	*/
+	 */
 
-	
+
 	/**
 	 * 		A quick multicast to detemerine the status of all the other nodes.
 	 */
@@ -215,12 +220,12 @@ public class RepairServiceRunnable implements Runnable {
 			} catch (JSONException e) {}
 		}
 	}
-	*/
+	 */
 
 
 	private Vector<String> findUneccessaryKeys( ){
 		if (link_storage == null || this.link_storage.storage == null ) return null;
-		
+
 		Iterator<?> iter = this.link_storage.storage.keys();
 		Vector<String> to_remove = new Vector<String>();
 
@@ -246,7 +251,7 @@ public class RepairServiceRunnable implements Runnable {
 				continue; // shouldn't get here
 			}
 		}
-		
+
 		return to_remove;
 	}
 
@@ -266,17 +271,17 @@ public class RepairServiceRunnable implements Runnable {
 			}
 		}
 	}
-	
+
 	private void fixBrokenKeys(){
 		if (link_storage == null || this.link_storage.storage == null ) return;
-		
+
 		Iterator<?> iter = this.link_storage.storage.keys();
 
 		while (iter.hasNext() ){
 			String key = (String) iter.next();
 			try {
 				JSONArray working_ja = this.link_storage.storage.getJSONArray(key);
-				
+
 				// TODO: Not hardcoded to 3
 				if (		this.link_serverinfo.IsServerDead(working_ja.getString(4)) 
 						||  this.link_serverinfo.IsServerDead(working_ja.getString(5)) 
@@ -286,42 +291,44 @@ public class RepairServiceRunnable implements Runnable {
 					newReq.put("put", true);
 					newReq.put("key", key);
 					newReq.put("value", working_ja.getString(0));
-					
+
 					this.link_nodemaster.keycommand(newReq); // try to update the system
 				}
-					
+
 			} catch (JSONException e) {
 				continue; // shouldn't get here
 			}
 		}
 	}
-	
-	
+
+
 	public boolean pollRandom(){
 		//pick a friend
 		Random rand = new Random();
 		int i = rand.nextInt( this.link_serverinfo.servers.length() );
 		String url = null;
-		
+
 		try {
 			url =  this.link_serverinfo.servers.getString(i);
 		} catch (JSONException e) {
 			// should never get here
 			return false;
 		}
-		
+
 		SocketHelper sh = new SocketHelper();
-		
+
 		int status = sh.CreateConnection(url, SysValues.STATUS_PORT);
-		
+
 		if ( status != 0){ // Timed out or couldn't resolve on creation, probably dead.
 			this.link_serverinfo.ListServerDead( url );
 			sh.CloseConnection();
 			return false;
 		}
 		
-		String theirdata = sh.ReceiveMessage( SysValues.LISTEN_TIMEOUT /2 );
+		// Get their data
+		String theirdata = sh.ReceiveMessage( SysValues.LISTEN_TIMEOUT );
 		if (theirdata == null){
+			sh.SendMessage("FAIL!");
 			this.link_serverinfo.ListServerDead( url );
 			sh.CloseConnection();
 			return false;
@@ -331,6 +338,7 @@ public class RepairServiceRunnable implements Runnable {
 			their = new JSONObject(theirdata);
 		} catch (JSONException e2) {
 			//this.ListServerDead( url );
+			sh.SendMessage("FAIL!");
 			broadcast("Bad JSON: Unsure of status of " + url);
 			sh.CloseConnection();
 			return true;
@@ -348,22 +356,25 @@ public class RepairServiceRunnable implements Runnable {
 			return true;	// shouldn't get here if past checks worked
 		}
 		this.link_serverinfo.OverwriteDataAt( url, their );
-		
+
+		/*
 		// Send this nodes hash
 		String hash = link_serverinfo.getSHA(  );
 		sh.SendMessage( hash );
-
+		 */
+		/*
 		// Receive JSON
-		String result = sh.ReceiveMessage( SysValues.LISTEN_TIMEOUT /2 );
+		String result = sh.ReceiveMessage( SysValues.LISTEN_TIMEOUT );
 		if (result == null){
 			//this.ListServerDead( url );
 			broadcast("NULL response: Unsure of status of " + url);
 			sh.CloseConnection();
 			return true;
 		}
-
+		 */
+		/*
 		try {
-			JSONObject j = new JSONObject( result );
+			//JSONObject j = new JSONObject( result );
 
 			if (j.has("same")){
 				//we're done
@@ -371,16 +382,30 @@ public class RepairServiceRunnable implements Runnable {
 				return true;
 
 			}else{ // was not the same
+		 */
+		
+		// send our data.
+		sh.SendMessage( link_serverinfo.dead_data.toString() );
 
-				// send our data.
-				sh.SendMessage( link_serverinfo.dead_data.toString() );
-
-				// rebuild our data.
-				boolean newest = link_serverinfo.RebuildData( j );
-				sh.CloseConnection();
-				return newest;
-			}
-
+		// Receive JSON
+		String result = sh.ReceiveMessage( SysValues.LISTEN_TIMEOUT );
+		if (result == null){
+			//this.ListServerDead( url );
+			broadcast("NULL response: Unsure of status of " + url);
+			sh.CloseConnection();
+			return true;
+		}
+		
+		try{
+			JSONObject j = new JSONObject( result );
+			
+			// rebuild our data.
+			boolean newest = link_serverinfo.RebuildData( j );
+			
+			//broadcast(url +" is OK.");
+			sh.CloseConnection();
+			return newest;
+			
 		} catch (JSONException e) {
 			// possibly malformed json from partner?
 			broadcast("Bad JSON 2: Unsure of status of " + url);
@@ -390,4 +415,14 @@ public class RepairServiceRunnable implements Runnable {
 
 		
 	}
+	/*
+		} catch (JSONException e) {
+			// possibly malformed json from partner?
+			broadcast("Bad JSON 2: Unsure of status of " + url);
+			sh.CloseConnection();
+			return true;
+		}
+	 */
+
+	//}
 }

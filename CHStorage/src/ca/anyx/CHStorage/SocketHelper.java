@@ -76,10 +76,10 @@ public class SocketHelper {
 			this.TCP_socket.setSoTimeout(SysValues.LISTEN_TIMEOUT*1000);
 			this.pw = new PrintWriter(TCP_socket_os);
 		} catch (UnknownHostException e) {
-			broadcast("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
+			//broadcast("NOTICE: Host exception on TCP socket creation. Host likely dead.\n");
 			return 2;
 		} catch (IOException e) {
-			broadcast(server + " : " + e.getLocalizedMessage() );
+			//broadcast(server + " : " + e.getLocalizedMessage() );
 			if ( e.getLocalizedMessage().equals("Connection refused") ){
 				return 1;
 			}else if ( e.getLocalizedMessage().equals("Connection timed out") ){

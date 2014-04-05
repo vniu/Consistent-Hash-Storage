@@ -82,13 +82,19 @@ public class RedundancyRunnable { //implements Runnable {
 
 		// Any remaining connections (maybe dead, maybe slow), should be finalized. 
 		if (SysValues.EXPERIMENTAL_FINALIZER){
-			RequestObject ro = new RequestObject (open_connections, this.message, this.sentLocations );
-			link_finalizer.add_to_finalize.add(ro);
+			if (this.message.has("get") || this.message.has("remove")) {
+				cleanSockets(open_connections);
+			}else{
+				RequestObject ro = new RequestObject (open_connections, this.message, this.sentLocations );
+				link_finalizer.add_to_finalize.add(ro);
+			}
+			
 		}else{
-			if (this.message.has("get")){		// We don't need to ensure replication of get requests
+			if (this.message.has("get") 			// We don't need to ensure replication of get requests
+					|| this.message.has("remove")){	// Nor do we need to try and remove from a replica that doesn't exist yet
 				cleanSockets(open_connections);
 			}else
-				finalizeSockets(open_connections); //TODO: Maybe make just this part a separate thread?
+				finalizeSockets(open_connections);
 		}
 		
 		return;
@@ -261,6 +267,7 @@ public class RedundancyRunnable { //implements Runnable {
 
 				// Check against the dead servers for the current url -> if it is dead, skip it.
 				int increments = 0;
+				boolean lost_level = false;
 				//while ( link_serverinfo.dead_servers.contains( redundanturl ) ){
 				while ( link_serverinfo.IsServerDead( redundanturl ) ){
 					broadcast("Skipping dead URL: " + redundanturl );
@@ -276,11 +283,13 @@ public class RedundancyRunnable { //implements Runnable {
 						location = NodeMaster.mapto ( message.getString("key"), link_serverinfo.servers );
 						location = incrementLocBy( location, i, link_serverinfo.servers.length() );
 						redundanturl = link_serverinfo.servers.getString(location);
+						lost_level = true;
 						break;
 					}
 					redundanturl = link_serverinfo.servers.getString(location);
 				}
-
+				if (lost_level) continue;
+				
 				// Already sent to the server on a previous iteration
 				if ( sentLocations.contains(redundanturl) ){
 					// In theory this should only happen if the server list is small -
