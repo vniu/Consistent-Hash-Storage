@@ -44,9 +44,9 @@ public class RepairServiceRunnable implements Runnable {
 
 		while (SysValues.shutdown == false ){
 
-			// Check every 2 second for now TODO: change!
+			// Check every 1 second for now TODO: change!
 			try {
-				Thread.sleep(2000);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {}
 
 			//boolean newest = 
@@ -73,11 +73,11 @@ public class RepairServiceRunnable implements Runnable {
 					// Updated the dead list, now remove any unnecessary keys we're holding onto
 					// Swap back and forth to avoid clashes (other servers updating their dead lists)
 					if (state == 0){
-						unneccessary = this.findUneccessaryKeys();
+						//unneccessary = this.findUneccessaryKeys();
 						state = 1;
 					}else{
 						// those keys have been stale for 2x the repair timer - remove them
-						removeUneccessaryKeys( unneccessary );
+						//removeUneccessaryKeys( unneccessary );
 						state = 0;
 					}
 					//fixBrokenKeys(); -- moved

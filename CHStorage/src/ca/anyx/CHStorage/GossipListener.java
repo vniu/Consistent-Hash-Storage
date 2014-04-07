@@ -23,7 +23,7 @@ public class GossipListener implements Runnable{
 	public GossipListener( ServerListsInfo serverinfo, int theport) {
 		this.link_serverinfo = serverinfo;
 		this.port = theport;
-		pool = Executors.newFixedThreadPool(5); //TODO: sys
+		pool = Executors.newFixedThreadPool(10); //TODO: sys
 	}
 
 	private void broadcast( String s ){
@@ -93,7 +93,7 @@ public class GossipListener implements Runnable{
 				//rebuild our data
 				//JSONObject j = new JSONObject(theirdata);
 				
-				//broadcast("Serviced a poll request successfully.");
+				broadcast("Serviced a poll request successfully.");
 			//}
 
 			sh.CloseConnection();
@@ -139,7 +139,7 @@ public void run() {
 			return;
 		}
 
-		//broadcast ( "Got connection from: " + clientSocket.getInetAddress().toString() );
+		broadcast ( "Got connection from: " + clientSocket.getInetAddress().toString() );
 
 		pool.execute(new GossipRunnable( clientSocket ) );
 	} // End of while
